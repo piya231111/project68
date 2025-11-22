@@ -20,8 +20,7 @@ export default function SearchSection({
   };
 
   return (
-    <div className="w-full mt-8">
-      {/* กล่องภายนอก */}
+    <div className="w-full mt-8 relative z-[9999] overflow-visible">
       <div
         className="
           bg-white/80 
@@ -30,18 +29,20 @@ export default function SearchSection({
           shadow-md 
           p-6 
           border border-[#d4f4ff]
+          relative 
+          z-[9999]
+          overflow-visible
         "
       >
-        {/* กล่อง search แนวนอนแบบพรีเมียม */}
         <div
           className="
             flex flex-col lg:flex-row 
-            items-center 
+            items-start 
             justify-between 
             gap-5
+            overflow-visible
           "
         >
-          {/* 🔹 ค้นหาชื่อ */}
           <input
             type="text"
             placeholder="ค้นหาชื่อเพื่อน..."
@@ -61,16 +62,10 @@ export default function SearchSection({
             "
           />
 
-          {/* 🔹 เลือกประเทศ */}
-          <div className="w-full lg:w-56">
-            <CountrySelect
-              value={country}
-              onChange={setCountry}
-              className="rounded-2xl"
-            />
+          <div className="w-full lg:w-56 relative overflow-visible z-[9999]">
+            <CountrySelect value={country} setValue={setCountry} />
           </div>
 
-          {/* 🔹 หมวดหมู่ */}
           <select
             value={mode}
             onChange={(e) => {
@@ -97,7 +92,6 @@ export default function SearchSection({
             <option value="manual">เลือกหมวดหมู่เอง</option>
           </select>
 
-          {/* 🔹 ปุ่มค้นหา */}
           <button
             onClick={handleSearch}
             className="

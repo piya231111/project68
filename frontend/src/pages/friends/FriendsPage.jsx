@@ -105,9 +105,8 @@ export default function FriendsPage() {
     );
 
     return (
-        <main className="flex justify-center items-center px-16 py-12 bg-[#E9FBFF]">
-            <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-4xl border border-[#d0f6ff]">
-
+        <main className="flex justify-center items-start px-16 py-12 bg-[#E9FBFF] overflow-visible">
+            <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-4xl border border-[#d0f6ff] relative overflow-visible z-[20]">
                 {/* ⭐ Tabs */}
                 <Tabs tab={tab} setTab={setTab} />
 

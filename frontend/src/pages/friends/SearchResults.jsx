@@ -13,7 +13,14 @@ export default function SearchResults({
     return <p className="text-gray-500">ไม่พบผลลัพธ์</p>;
 
   return (
-    <ul className="divide-y bg-white/70 rounded-xl">
+    <ul
+      className="
+        divide-y bg-white/70 rounded-xl
+        max-h-[400px]           /* ⭐ สูงสุดประมาณ 5 รายชื่อ */
+        overflow-y-auto         /* ⭐ เปิดให้เลื่อนดู */
+        pr-2                    /* ⭐ กัน scrollbar ทับ */
+      "
+    >
       {results.map((u) => (
         <FriendRow
           key={u.id}

@@ -46,7 +46,9 @@ export async function getRequests(req, res) {
         u.display_name,
         u.email,
         p.country,
-        p.interests
+        p.interests,
+        p.avatar_id,
+        p.item_id
       FROM friend_requests fr
       JOIN users u ON u.id = fr.sender_id
       LEFT JOIN profiles p ON p.user_id = u.id
@@ -76,6 +78,8 @@ export async function getPendingSentRequests(req, res) {
         u.email,
         p.country,
         p.interests,
+        p.avatar_id,
+        p.item_id,
         fr.status
       FROM friend_requests fr
       JOIN users u ON u.id = fr.receiver_id
@@ -98,7 +102,6 @@ export async function getPendingSentRequests(req, res) {
 }
 
 // ✅ ค้นหาผู้ใช้ (มี filter: q, country, category + ซ่อนคนที่บล็อคกัน)
-// ✅ ค้นหาผู้ใช้ (มี filter: q, country, category)
 export async function searchFriends(req, res) {
   try {
     const userId = req.user.id;
@@ -110,32 +113,31 @@ export async function searchFriends(req, res) {
         u.display_name, 
         u.email, 
         p.country, 
-        p.interests
+        p.interests,
+        p.avatar_id,
+        p.item_id
       FROM users u
       LEFT JOIN profiles p ON p.user_id = u.id
       WHERE u.id != $1
     `;
+
     const params = [userId];
     let i = 2;
 
-    // 🔍 ค้นหาด้วยชื่อหรืออีเมล
     if (q) {
       query += ` AND (u.display_name ILIKE $${i} OR u.email ILIKE $${i})`;
       params.push(`%${q}%`);
       i++;
     }
 
-    // 🌍 กรองประเทศ
     if (country) {
       query += ` AND p.country = $${i}`;
       params.push(country);
       i++;
     }
 
-    // 🎯 กรองตามหมวดความสนใจ
     if (category) {
       const cats = Array.isArray(category) ? category : [category];
-      // ✅ ใช้ ANY() แบบถูกต้อง: ARRAY[...]
       query += ` AND p.interests && ARRAY[${cats.map((_, idx) => `$${i + idx}`).join(", ")}]`;
       cats.forEach((c) => params.push(c));
       i += cats.length;
@@ -145,11 +147,13 @@ export async function searchFriends(req, res) {
 
     const result = await pool.query(query, params);
     res.json({ results: result.rows });
+
   } catch (err) {
     console.error("searchFriends error:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการค้นหาเพื่อน" });
   }
 }
+
 
 // ✅ ส่งคำขอเพื่อน
 export async function sendFriendRequest(req, res) {
