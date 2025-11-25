@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FriendMenu from "./FriendMenu";
+import { api } from "../api.js";
 
 export default function FriendRow({
   friend,
@@ -16,27 +17,83 @@ export default function FriendRow({
 }) {
   const [openMenu, setOpenMenu] = useState(false);
 
+  // ⭐ โหลด avatar & item จาก backend
+  const [avatar, setAvatar] = useState(null);
+  const [item, setItem] = useState(null);
+
+  useEffect(() => {
+    if (!friend) return;
+
+    console.log("FRIEND DATA =>", friend);
+
+    // โหลด Avatar
+    if (friend.avatar_id) {
+      api.get(`/avatars/${friend.avatar_id}`).then((res) => {
+        console.log("AVATAR DATA =>", res.data);
+        setAvatar(res.data);
+      });
+    }
+
+    // โหลด Item
+    if (friend.item_id) {
+      api.get(`/items/${friend.item_id}`).then((res) => {
+        console.log("ITEM DATA =>", res.data);
+        setItem(res.data);
+      });
+    }
+  }, [friend]);
+
   return (
     <li
       className="py-4 px-3 flex justify-between items-center hover:bg-[#E9FBFF] transition-all rounded-xl cursor-pointer relative"
       onClick={onClick}
     >
-      {/* 🔹 ซ้าย: ชื่อ + ประเทศ/หมวดหมู่ */}
-      <div className="flex-1">
-        <p className="font-medium text-gray-800">
-          {friend.display_name}
-          {isFavorite && <span className="text-yellow-400 ml-1">⭐</span>}
-        </p>
-        <p className="text-sm text-gray-500">
-          {friend.country || "ไม่ระบุประเทศ"} —{" "}
-          {friend.interests?.join(", ") || "ไม่มีข้อมูลความสนใจ"}
-        </p>
+      {/* ===================== LEFT ===================== */}
+      <div className="flex items-center flex-1 gap-3">
+        {/* Avatar + Item overlay */}
+        <div className="relative w-14 h-14">
+
+          {/* ITEM (ด้านหลัง) */}
+          {item?.imageUrl && (
+            <img
+              src={item.imageUrl}
+              className="absolute inset-0 w-full h-full object-contain z-10 opacity-95"
+              alt="item"
+            />
+          )}
+
+          {/* AVATAR (ด้านหน้า) */}
+          {avatar?.image_url ? (
+            <img
+              src={avatar.image_url}
+              className="absolute inset-0 w-full h-full object-contain z-20"
+              alt="avatar"
+            />
+          ) : (
+            <div className="absolute inset-0 w-full h-full rounded-full bg-gray-300 flex items-center justify-center text-white font-semibold text-lg z-20">
+              {friend.display_name?.charAt(0)?.toUpperCase()}
+            </div>
+          )}
+
+        </div>
+
+        {/* Display name + Info */}
+        <div>
+          <p className="font-medium text-gray-800 flex items-center gap-1">
+            {friend.display_name}
+            {isFavorite && <span className="text-yellow-400">⭐</span>}
+          </p>
+
+          <p className="text-sm text-gray-500">
+            {friend.country || "ไม่ระบุประเทศ"} —{" "}
+            {friend.interests?.join(", ") || "ไม่มีข้อมูลความสนใจ"}
+          </p>
+        </div>
       </div>
 
-      {/* 🔹 ขวา: ปุ่มจุดเมนู หรือ ปุ่มยอมรับ/ปฏิเสธ */}
+      {/* ===================== RIGHT ===================== */}
       <div className="flex items-center gap-3">
-
-        {/* กรณี: คำขอเข้ามา */}
+        {/* Incoming friend request */}
         {isIncomingRequest && (
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             <button
@@ -54,31 +111,25 @@ export default function FriendRow({
           </div>
         )}
 
-        {/* กรณี: ผลการค้นหาที่ยังไม่เป็นเพื่อน */}
+        {/* Add friend */}
         {!isFriend && !isIncomingRequest && (
-          <>
+          <div onClick={(e) => e.stopPropagation()}>
             {isSentRequest ? (
               <span className="text-gray-500 italic">📨 ส่งคำขอแล้ว</span>
             ) : (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSendRequest(friend.id);
-                }}
+                onClick={() => onSendRequest(friend.id)}
                 className="bg-[#00B8E6] text-white px-4 py-2 rounded-xl hover:bg-[#009ecc]"
               >
                 เพิ่มเพื่อน
               </button>
             )}
-          </>
+          </div>
         )}
 
-        {/* กรณี: เป็นเพื่อนแล้ว → แสดงเมนู ⋮ */}
+        {/* Friend menu */}
         {isFriend && (
-          <div
-            className="relative"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setOpenMenu(!openMenu)}
               className="p-2 rounded-full hover:bg-gray-100"
@@ -86,7 +137,6 @@ export default function FriendRow({
               ⋮
             </button>
 
-            {/* Popup Menu */}
             {openMenu && (
               <FriendMenu
                 friend={friend}

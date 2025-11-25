@@ -14,6 +14,8 @@ import ProfileEdit from "./pages/profile/ProfileEdit";
 import AvatarSelect from "./pages/profile/AvatarSelect";
 import ItemSelect from "./pages/profile/ItemSelect";
 import FriendsPage from "./pages/friends/FriendsPage";
+import ManageFriends from "./pages/friends/ManageFriends";
+
 
 
 function App() {
@@ -34,7 +36,8 @@ function App() {
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/profile/avatar" element={<AvatarSelect />} />
           <Route path="/profile/item" element={<ItemSelect />} />
-          <Route path="/friends" element={<FriendsPage />} /> {/* ✅ modal อยู่ในนี้ */}
+          <Route path="/friends" element={<FriendsPage />} /> 
+          <Route path="/friends/manage" element={<ManageFriends />} />
         </Route>
 
         {/* ✅ กลุ่ม Setup (ไม่มี Header) */}

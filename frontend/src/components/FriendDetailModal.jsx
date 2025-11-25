@@ -1,5 +1,6 @@
 // src/components/FriendDetailModal.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 
 export default function FriendDetailModal({
@@ -12,6 +13,8 @@ export default function FriendDetailModal({
   onChat,
 }) {
   if (!friend) return null;
+
+  const navigate = useNavigate();
 
   const [avatar, setAvatar] = useState(null);
   const [item, setItem] = useState(null);
@@ -29,22 +32,20 @@ export default function FriendDetailModal({
   }, [friend]);
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 animate-fadeIn">
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 animate-fadeIn"
+      onClick={onClose}   // ⭐ คลิกพื้นหลังเพื่อปิด
+    >
       <div
-        className="
-          bg-white/95
-          rounded-3xl
-          shadow-2xl
-          w-full max-w-md
-          p-8
-          relative
-          border border-[#bcecff]
-          animate-slideUp
-        "
+        className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 relative border border-[#bcecff] animate-slideUp"
+        onClick={(e) => e.stopPropagation()}  // ❗ กันไม่ให้คลิกปิดเวลาอยู่ใน modal
       >
         {/* ปุ่มปิด */}
         <button
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl"
         >
           ✖
@@ -53,7 +54,6 @@ export default function FriendDetailModal({
         {/* Avatar + Item */}
         <div className="flex justify-center mb-6">
           <div className="relative w-36 h-36 drop-shadow-md">
-            {/* Item */}
             {item && (
               <img
                 src={item.image_url || item.imageUrl}
@@ -62,7 +62,6 @@ export default function FriendDetailModal({
               />
             )}
 
-            {/* Avatar */}
             {avatar && (
               <img
                 src={avatar.image_url}
@@ -73,7 +72,7 @@ export default function FriendDetailModal({
           </div>
         </div>
 
-        {/* ชื่อ + สเตตัส */}
+        {/* ชื่อ */}
         <div className="text-center mb-4">
           <h2 className="text-2xl font-extrabold text-gray-800 flex items-center justify-center gap-2">
             {friend.display_name}
@@ -81,9 +80,8 @@ export default function FriendDetailModal({
           </h2>
 
           <p
-            className={`text-sm font-medium ${
-              friend.is_online ? "text-green-500" : "text-gray-400"
-            }`}
+            className={`text-sm font-medium ${friend.is_online ? "text-green-500" : "text-gray-400"
+              }`}
           >
             {friend.is_online ? "🟢 ออนไลน์" : "⚪ ออฟไลน์"}
           </p>
@@ -117,47 +115,87 @@ export default function FriendDetailModal({
 
         {/* ปุ่ม Action */}
         <div className="mt-8 flex flex-col gap-3">
-          {!friend.isFriend ? (
+
+          {/* ⭐ คำขอเข้ามา → ยอมรับ / ปฏิเสธ */}
+          {friend.isIncomingRequest ? (
             <>
               <button
-                onClick={() => onAddFriend(friend.id)}
-                className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold shadow-md"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddFriend(friend.id); // ใช้ accept request
+                }}
+                className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
-                ➕ เพิ่มเพื่อน
+                ยอมรับคำขอ
               </button>
 
               <button
-                onClick={() => onBlockUser(friend.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveFriend(friend.id); // ใช้ decline request
+                }}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
-                🚫 บล็อค
+                ปฏิเสธคำขอ
+              </button>
+            </>
+          ) : !friend.isFriend ? (
+            /* ⭐ ยังไม่เป็นเพื่อน → เพิ่มเพื่อน / บล็อค */
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddFriend(friend.id);
+                }}
+                className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold shadow-md"
+              >
+                เพิ่มเพื่อน
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBlockUser(friend.id); // ยิง API บล็อคผู้ใช้
+                  onClose();              // ปิด modal
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
+              >
+                บล็อค
               </button>
             </>
           ) : (
+            /* ⭐ เป็นเพื่อนแล้ว → แชท / ดาว / ลบ */
             <>
               <button
-                onClick={() => onChat(friend.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChat(friend.id);
+                }}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
-                💬 แชท
+                แชท
               </button>
 
               <button
-                onClick={() => onToggleFavorite(friend.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(friend.id);
+                }}
                 className="bg-yellow-400 hover:bg-yellow-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
                 {friend.is_favorite ? "⭐ เอาดาวออก" : "⭐ ปักดาวเพื่อน"}
               </button>
 
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (window.confirm(`ต้องการลบเพื่อน ${friend.display_name}?`)) {
                     onRemoveFriend(friend.id);
                   }
                 }}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
-                ❌ ลบเพื่อน
+                ลบเพื่อน
               </button>
             </>
           )}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../../api";
 
 import Tabs from "./Tabs";
@@ -25,7 +25,7 @@ export default function FriendsPage() {
     const [selectedFriend, setSelectedFriend] = useState(null);
     const [showFriendModal, setShowFriendModal] = useState(false);
 
-    // -------------------- LOAD DATA --------------------
+    // โหลดข้อมูล
     useEffect(() => {
         loadData();
     }, []);
@@ -51,13 +51,13 @@ export default function FriendsPage() {
         }
     };
 
-    // -------------------- ACTIONS --------------------
     const sendRequest = async (id) => {
         try {
-            await api.post(`/friends/request/${id}`);
+            const res = await api.post(`/friends/request/${id}`);
+            console.log("sendRequest OK:", res.data);
             setSentRequests((prev) => [...prev, id]);
         } catch (e) {
-            console.error("sendRequest error:", e);
+            console.error("sendRequest error:", e.response?.data || e);
         }
     };
 
@@ -87,9 +87,7 @@ export default function FriendsPage() {
             const res = await api.get(`/friends/search?${params}`);
             const results = res.data.results || [];
 
-            // กรองเพื่อนออก (ไม่ให้ขึ้นในผลลัพธ์)
             const friendIds = new Set(friends.map((f) => f.id));
-
             const filtered = results.filter((u) => !friendIds.has(u.id));
 
             setSearchResults(filtered);
@@ -101,21 +99,23 @@ export default function FriendsPage() {
     };
 
     const uniqueFriends = Array.from(
-        new Map(friends.map(f => [f.id, f])).values()
+        new Map(friends.map((f) => [f.id, f])).values()
     );
 
     return (
         <main className="flex justify-center items-start px-16 py-12 bg-[#E9FBFF] overflow-visible">
             <div className="bg-white p-8 rounded-3xl shadow-lg w-full max-w-4xl border border-[#d0f6ff] relative overflow-visible z-[20]">
-                {/* ⭐ Tabs */}
+
                 <Tabs tab={tab} setTab={setTab} />
 
-                {/* ⭐ Friends */}
                 {tab === "friends" && (
                     <FriendsList
                         friends={uniqueFriends}
                         onOpenDetail={(f) => {
-                            setSelectedFriend(f);
+                            setSelectedFriend({
+                                ...f,
+                                isFriend: true,   // ⭐ เป็นเพื่อนแล้ว
+                            });
                             setShowFriendModal(true);
                         }}
                         onToggleFavorite={toggleFavorite}
@@ -123,20 +123,21 @@ export default function FriendsPage() {
                     />
                 )}
 
-                {/* ⭐ Requests */}
                 {tab === "requests" && (
                     <RequestsList
                         requests={requests}
                         onAccept={acceptRequest}
                         onDecline={declineRequest}
                         onOpenDetail={(f) => {
-                            setSelectedFriend(f);
+                            setSelectedFriend({
+                                ...f,
+                                isFriend: false,  // ⭐ ยังไม่ใช่เพื่อน
+                            });
                             setShowFriendModal(true);
                         }}
                     />
                 )}
 
-                {/* ⭐ Search */}
                 {tab === "search" && (
                     <>
                         <SearchSection
@@ -148,9 +149,12 @@ export default function FriendsPage() {
                             loading={loading}
                             results={searchResults}
                             sentRequests={sentRequests}
+                            incomingRequests={requests.map(r => r.from_user_id)}   // ⭐ เพิ่ม
                             onSendRequest={sendRequest}
+                            onAccept={acceptRequest}
+                            onDecline={declineRequest}
                             onOpenDetail={(f) => {
-                                setSelectedFriend(f);
+                                setSelectedFriend({ ...f, isFriend: false });
                                 setShowFriendModal(true);
                             }}
                         />
@@ -158,7 +162,6 @@ export default function FriendsPage() {
                 )}
             </div>
 
-            {/* Modal: Category */}
             {showCategoryModal && (
                 <CategoryModal
                     selectedCategories={selectedCategories}
@@ -167,14 +170,50 @@ export default function FriendsPage() {
                 />
             )}
 
-            {/* Modal: Friend detail */}
             {showFriendModal && (
                 <FriendDetailModal
                     friend={selectedFriend}
-                    onClose={() => setShowFriendModal(false)}
-                    onToggleFavorite={toggleFavorite}
-                    onRemoveFriend={removeFriend}
-                    onAddFriend={sendRequest}
+                    onClose={() => {
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                    }}
+
+                    onToggleFavorite={(id) => {
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                        toggleFavorite(id);     // ยิง API ทีหลัง ไม่ block UI
+                    }}
+
+                    onRemoveFriend={(id) => {
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                        removeFriend(id);
+                    }}
+
+                    onAddFriend={(id) => {
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                        sendRequest(id);
+                    }}
+
+                    onChat={(id) => {
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                        console.log("go chat", id);
+                    }}
+
+                    onBlockUser={async (id) => {
+                        await api.post(`/friends/${id}/block`);
+
+                        // อัปเดต list ทั้งหมด
+                        await loadData();
+
+                        // ลบออกจากผลค้นหา
+                        setSearchResults(prev => prev.filter(u => u.id !== id));
+
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                    }}
                 />
             )}
         </main>

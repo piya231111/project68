@@ -1,6 +1,6 @@
 // backend/routes/authRoutes.js
 import express from "express";
-import { register, login, googleLogin, getMe, updateMe } from "../controllers/authController.js";
+import { register, login, googleLogin, getMe, updateMe, logout  } from "../controllers/authController.js";
 import { authRequired } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -13,6 +13,9 @@ router.post("/login", login);
 
 // เข้าสู่ระบบด้วย Google OAuth
 router.post("/google", googleLogin);
+
+// ออกจากระบบ
+router.post("/logout", authRequired, logout);
 
 // ดูข้อมูลผู้ใช้ปัจจุบัน
 router.get("/me", authRequired, getMe);

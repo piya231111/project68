@@ -13,6 +13,9 @@ export default function Home() {
     (async () => {
       try {
         const res = await api.get("/me");
+
+        console.log("📌 RESPONSE FROM /me =", res.data.me);  // 👈 เพิ่มตรงนี้
+
         const user = res.data?.me;
         setMe(user);
 
@@ -73,9 +76,16 @@ export default function Home() {
           )}
         </div>
 
-        <h2 className="mt-6 text-2xl font-bold text-[#00B8E6]">
+        <h2 className="mt-6 text-2xl font-bold text-[#00B8E6] flex items-center gap-3">
           {me?.display_name || "ผู้ใช้ใหม่"}
+
+          {me?.is_online ? (
+            <span className="text-green-500 text-base">🟢 ออนไลน์</span>
+          ) : (
+            <span className="text-gray-400 text-base">⚪ ออฟไลน์</span>
+          )}
         </h2>
+
         <p className="text-gray-600 text-lg">{me?.country || "-"}</p>
       </div>
 

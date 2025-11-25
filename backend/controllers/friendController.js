@@ -15,6 +15,7 @@ export async function getFriends(req, res) {
         p.interests,
         p.avatar_id,
         p.item_id,
+        p.is_online,
         f.is_favorite
       FROM friends f
       JOIN users u 
@@ -119,6 +120,12 @@ export async function searchFriends(req, res) {
       FROM users u
       LEFT JOIN profiles p ON p.user_id = u.id
       WHERE u.id != $1
+        AND u.id NOT IN (
+          SELECT blocked_id FROM blocked_users WHERE blocker_id = $1
+        )
+        AND u.id NOT IN (
+          SELECT blocker_id FROM blocked_users WHERE blocked_id = $1
+        )
     `;
 
     const params = [userId];
@@ -155,7 +162,7 @@ export async function searchFriends(req, res) {
 }
 
 
-// ✅ ส่งคำขอเพื่อน
+// ✅ ส่งคำขอเพื่อน (เวอร์ชันแก้แล้ว)
 export async function sendFriendRequest(req, res) {
   try {
     const senderId = req.user.id;
@@ -164,12 +171,32 @@ export async function sendFriendRequest(req, res) {
     if (senderId === receiverId)
       return res.status(400).json({ error: "❌ ไม่สามารถเพิ่มเพื่อนตัวเองได้" });
 
-    // ตรวจว่าผู้รับมีอยู่จริงไหม
+    // ตรวจว่าผู้ใช้ปลายทางมีจริง
     const checkUser = await pool.query("SELECT id FROM users WHERE id = $1", [receiverId]);
     if (checkUser.rowCount === 0)
       return res.status(404).json({ error: "ไม่พบผู้ใช้ปลายทาง" });
 
-    // ตรวจคำขอซ้ำ
+    // ⭐ ลบคำขอเก่าออกก่อน (กันส่งใหม่แล้ว error)
+    await pool.query(
+      `
+      DELETE FROM friend_requests
+      WHERE (sender_id = $1 AND receiver_id = $2)
+         OR (sender_id = $2 AND receiver_id = $1)
+      `,
+      [senderId, receiverId]
+    );
+
+    // ⭐ ล้างข้อมูลเพื่อนเก่า (กัน error)
+    await pool.query(
+      `
+      DELETE FROM friends
+      WHERE (requester_id = $1 AND receiver_id = $2)
+         OR (requester_id = $2 AND receiver_id = $1)
+      `,
+      [senderId, receiverId]
+    );
+
+    // ตรวจคำขอซ้ำ (ถ้าหลังลบแล้วยังเจอ แสดงว่ามีปัญหา)
     const existReq = await pool.query(
       `
       SELECT 1 FROM friend_requests
@@ -178,6 +205,9 @@ export async function sendFriendRequest(req, res) {
       `,
       [senderId, receiverId]
     );
+
+    if (existReq.rowCount > 0)
+      return res.status(400).json({ error: "มีคำขอหรือเป็นเพื่อนอยู่แล้ว" });
 
     // ตรวจว่าเป็นเพื่อนอยู่แล้วไหม
     const existFriend = await pool.query(
@@ -189,10 +219,10 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    if (existReq.rowCount > 0 || existFriend.rowCount > 0)
+    if (existFriend.rowCount > 0)
       return res.status(400).json({ error: "มีคำขอหรือเป็นเพื่อนอยู่แล้ว" });
 
-    // ✅ เพิ่มคำขอใหม่
+    // ⭐ เพิ่มคำขอใหม่
     await pool.query(
       `
       INSERT INTO friend_requests (sender_id, receiver_id, status)
@@ -207,6 +237,7 @@ export async function sendFriendRequest(req, res) {
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการส่งคำขอ" });
   }
 }
+
 
 // ✅ ยอมรับคำขอเพื่อน
 export async function acceptFriendRequest(req, res) {
@@ -287,13 +318,13 @@ export async function declineFriendRequest(req, res) {
   }
 }
 
-// ✅ ลบเพื่อนออกจากระบบ (สองฝั่ง)
+// ✅ ลบเพื่อน (เวอร์ชันแก้แล้ว)
 export async function deleteFriend(req, res) {
   try {
-    const userId = req.user.id;      // คนที่กำลังล็อกอิน
-    const friendId = req.params.id;  // id ของเพื่อนที่จะลบ
+    const userId = req.user.id;      // คนที่ล็อกอิน
+    const friendId = req.params.id;  // เพื่อนที่จะลบ
 
-    // ตรวจว่าเป็นเพื่อนกันจริงไหม
+    // ตรวจว่าเป็นเพื่อนกันอยู่ไหม
     const check = await pool.query(
       `
       SELECT * FROM friends
@@ -309,13 +340,24 @@ export async function deleteFriend(req, res) {
       return res.status(404).json({ error: "ไม่พบเพื่อนคนนี้ในรายชื่อของคุณ" });
     }
 
-    // ✅ ลบทั้งสองฝั่งออกจาก friends
+    // ⭐ ลบความเป็นเพื่อนทั้งสองฝั่ง
     await pool.query(
       `
       DELETE FROM friends
       WHERE 
         (requester_id = $1 AND receiver_id = $2)
         OR (requester_id = $2 AND receiver_id = $1)
+      `,
+      [userId, friendId]
+    );
+
+    // ⭐ ลบคำขอเก่าทั้งหมด (สำคัญมาก)
+    await pool.query(
+      `
+      DELETE FROM friend_requests
+      WHERE 
+        (sender_id = $1 AND receiver_id = $2)
+        OR (sender_id = $2 AND receiver_id = $1)
       `,
       [userId, friendId]
     );
@@ -376,6 +418,31 @@ export async function toggleFavoriteFriend(req, res) {
   }
 }
 
+// ✅ ดึงรายชื่อผู้ใช้ที่ถูกบล็อก
+export async function getBlockedUsers(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(`
+      SELECT 
+        u.id,
+        u.display_name,
+        u.email,
+        p.avatar_id,
+        p.item_id
+      FROM blocked_users b
+      JOIN users u ON u.id = b.blocked_id
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE b.blocker_id = $1
+      ORDER BY u.display_name ASC
+    `, [userId]);
+
+    res.json({ blocked: result.rows });
+  } catch (err) {
+    console.error("getBlockedUsers error:", err);
+    res.status(500).json({ error: "โหลดรายชื่อบล็อกไม่สำเร็จ" });
+  }
+}
 
 // ✅ บล็อคผู้ใช้
 export async function blockUser(req, res) {
@@ -441,4 +508,28 @@ export async function unblockUser(req, res) {
     res.status(500).json({ error: "ไม่สามารถยกเลิกบล็อคได้" });
   }
 }
+
+// ✅ ดึงสถานะออนไลน์ของเพื่อนแบบ Real-time
+export async function getFriendStatus(req, res) {
+  try {
+    const friendId = req.params.id;
+
+    const result = await pool.query(
+      `SELECT is_online 
+       FROM profiles 
+       WHERE user_id = $1`,
+      [friendId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "ไม่พบผู้ใช้" });
+    }
+
+    res.json({ is_online: result.rows[0].is_online });
+  } catch (err) {
+    console.error("getFriendStatus error:", err);
+    res.status(500).json({ error: "ไม่สามารถโหลดสถานะออนไลน์ได้" });
+  }
+}
+
 

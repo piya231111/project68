@@ -16,7 +16,11 @@ export default function RequestsList({
           key={r.id}
           friend={r}
           isIncomingRequest={true}
-          onClick={() => onOpenDetail(r)}
+          onClick={() => onOpenDetail({
+            ...r,
+            isFriend: false,
+            isIncomingRequest: true,   // ⭐ ส่งให้ modal รู้ว่าเป็นคำขอเข้ามา
+          })}
           onAcceptRequest={onAccept}
           onDeclineRequest={onDecline}
         />
