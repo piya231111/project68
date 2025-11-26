@@ -33,7 +33,7 @@ app.use(express.json());
 // Test route
 app.get("/", async (req, res) => {
   const result = await pool.query("SELECT NOW()");
-  res.json({ message: "🚀 Project68 backend is running", time: result.rows[0].now });
+  res.json({ message: "Project68 backend is running", time: result.rows[0].now });
 });
 
 // Routes
@@ -48,4 +48,4 @@ app.use("/api/items", itemsRoutes);
 app.use("/api/friends", friendRoutes);
 
 const PORT = process.env.PORT || 7000;
-app.listen(PORT, () => console.log(`✅ Backend running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
