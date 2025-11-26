@@ -23,7 +23,11 @@ function App() {
     <Router>
       <Routes>
         {/* ✅ หน้า Auth (ไม่มี Header) */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={
+          localStorage.getItem("access")
+            ? <Navigate to="/home" />
+            : <Navigate to="/login" />
+        } />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -36,7 +40,7 @@ function App() {
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/profile/avatar" element={<AvatarSelect />} />
           <Route path="/profile/item" element={<ItemSelect />} />
-          <Route path="/friends" element={<FriendsPage />} /> 
+          <Route path="/friends" element={<FriendsPage />} />
           <Route path="/friends/manage" element={<ManageFriends />} />
         </Route>
 
@@ -45,7 +49,7 @@ function App() {
         <Route path="/setup/avatar" element={<Avatar />} />
         <Route path="/setup/items" element={<Items />} />
         <Route path="/setup/category" element={<Category />} />
-        
+
       </Routes>
     </Router>
   );

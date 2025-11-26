@@ -19,7 +19,7 @@ export default function RequestsList({
           onClick={() => onOpenDetail({
             ...r,
             isFriend: false,
-            isIncomingRequest: true,   // ⭐ ส่งให้ modal รู้ว่าเป็นคำขอเข้ามา
+            isIncomingRequest: true,   // ส่งให้ modal รู้ว่าเป็นคำขอเข้ามา
           })}
           onAcceptRequest={onAccept}
           onDeclineRequest={onDecline}

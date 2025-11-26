@@ -14,10 +14,11 @@ export default function FriendsList({
 
   return (
     <>
-      {/* ⭐ Favorite */}
+      {/* Favorite */}
       <h3 className="text-xl text-yellow-500 font-semibold mb-3">
         ⭐ เพื่อนที่ปักดาว ({fav.length})
       </h3>
+
       <ul className="mb-8 divide-y bg-white/70 rounded-xl">
         {fav.map((f) => (
           <FriendRow
@@ -25,6 +26,7 @@ export default function FriendsList({
             friend={f}
             isFriend={true}
             isFavorite={true}
+            isOnline={f.is_online}   // ⭐ ส่งต่อสถานะออนไลน์
             onClick={() => onOpenDetail(f)}
             onToggleFavorite={onToggleFavorite}
             onRemoveFriend={onRemoveFriend}
@@ -34,10 +36,11 @@ export default function FriendsList({
 
       <hr className="my-6 border-dashed border-[#a5e8f7]" />
 
-      {/* ⭐ Normal Friends */}
+      {/* Normal Friends */}
       <h3 className="text-xl text-gray-700 font-semibold mb-3">
         เพื่อนทั้งหมด ({normal.length})
       </h3>
+
       <ul className="divide-y bg-white/70 rounded-xl">
         {normal.map((f) => (
           <FriendRow
@@ -45,6 +48,7 @@ export default function FriendsList({
             friend={f}
             isFriend={true}
             isFavorite={false}
+            isOnline={f.is_online}    // ⭐ ส่งต่อสถานะออนไลน์เช่นกัน
             onClick={() => onOpenDetail(f)}
             onToggleFavorite={onToggleFavorite}
             onRemoveFriend={onRemoveFriend}

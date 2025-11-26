@@ -12,7 +12,7 @@ export default function SearchResults({
 }) {
   if (loading) return <p className="text-gray-500">กำลังค้นหา...</p>;
 
-  // ⭐ กรองเอาคนที่ส่งคำขอมาให้เราออกเลย
+  // กรองเอาคนที่ส่งคำขอมาให้เราออกเลย
   const filteredResults = results.filter(
     (u) => !incomingRequests.includes(u.id)
   );
@@ -38,7 +38,7 @@ export default function SearchResults({
             friend={u}
 
             isFriend={false}
-            isIncomingRequest={false}  // ⭐ ไม่ต้องแสดง ยอมรับ/ปฏิเสธในค้นหาอีกต่อไป
+            isIncomingRequest={false}  // ไม่ต้องแสดง ยอมรับ/ปฏิเสธในค้นหาอีกต่อไป
             isSentRequest={isSent}
 
             onAcceptRequest={onAccept}

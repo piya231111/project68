@@ -34,17 +34,17 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // ✅ สมัครสมาชิก
+      // สมัครสมาชิก
       await api.post("/auth/register", { displayName, email, password });
 
-      // ✅ ล็อกอินทันที
+      // ล็อกอินทันที
       const r = await api.post("/auth/login", { identifier: email, password });
       const token = r.data?.token;
       if (!token) throw new Error("No token returned");
       localStorage.setItem("token", token);
       setToken(token);
 
-      // ✅ ไปหน้าเลือกประเทศ
+      // ไปหน้าเลือกประเทศ
       navigate("/setup/country", { replace: true });
     } catch (e) {
       alert(e?.response?.data?.error || "สมัครสมาชิกไม่สำเร็จ");
@@ -56,10 +56,10 @@ export default function Register() {
   return (
     <main
       className="min-h-screen w-screen flex items-center justify-center"
-      style={{ backgroundColor: "#E9FBFF" }} // ✅ พื้นหลังฟ้าอ่อน
+      style={{ backgroundColor: "#E9FBFF" }} // พื้นหลังฟ้าอ่อน
     >
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-10 border border-[#d0f6ff] text-center">
-        {/* ✅ หัวข้อ */}
+        {/* หัวข้อ */}
         <h1
           className="text-3xl md:text-4xl font-bold mb-3"
           style={{ color: "#00B8E6" }}
@@ -70,7 +70,7 @@ export default function Register() {
           สร้างบัญชีใหม่เพื่อเริ่มใช้งานระบบ
         </p>
 
-        {/* ✅ ฟอร์ม */}
+        {/* ฟอร์ม */}
         <form onSubmit={submit} className="space-y-5 text-left">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -149,7 +149,7 @@ export default function Register() {
           </button>
         </form>
 
-        {/* ✅ ลิงก์ไปหน้าล็อกอิน */}
+        {/* ลิงก์ไปหน้าล็อกอิน */}
         <p className="text-sm text-center text-gray-600 mt-6">
           มีบัญชีอยู่แล้ว?{" "}
           <Link

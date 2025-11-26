@@ -4,6 +4,7 @@ import CountrySelect from "../../components/CountrySelect";
 export default function SearchSection({
   setShowCategoryModal,
   setSelectedCategories,
+  selectedCategories,
   doSearch,
 }) {
   const [name, setName] = React.useState("");
@@ -12,15 +13,23 @@ export default function SearchSection({
 
   const handleSearch = () => {
     const params = new URLSearchParams();
+
     if (name) params.append("q", name);
     if (country) params.append("country", country);
     if (mode) params.append("mode", mode);
+
+    // ⭐ ใช้ selectedCategories ที่ส่งมาจาก FriendsPage
+    if (selectedCategories && selectedCategories.length > 0) {
+      selectedCategories.forEach((cat) => {
+        params.append("category", cat);
+      });
+    }
 
     doSearch(params.toString());
   };
 
   return (
-    <div className="w-full mt-8 relative z-[9999] overflow-visible">
+    <div className="w-full mt-8 relative z-[10] overflow-visible">
       <div
         className="
           bg-white/80 
@@ -30,7 +39,7 @@ export default function SearchSection({
           p-6 
           border border-[#d4f4ff]
           relative 
-          z-[9999]
+          z-[1]
           overflow-visible
         "
       >
@@ -71,23 +80,20 @@ export default function SearchSection({
             onChange={(e) => {
               const v = e.target.value;
               setMode(v);
+
+              e.target.blur();
+
+              // เปิด modal เมื่อเลือก manual
               if (v === "manual") {
-                setShowCategoryModal(true);
+                document.activeElement.blur();
+                setTimeout(() => {
+                  setShowCategoryModal(true);
+                }, 50);
               }
             }}
-            className="
-              w-full lg:w-56
-              px-5 py-3.5
-              rounded-2xl 
-              border border-[#a5e8f7] 
-              bg-[#f7fdff]
-              focus:ring-2 focus:ring-[#00B8E6]
-              focus:bg-white
-              outline-none
-              shadow-sm
-              transition
-            "
+            className="w-full lg:w-56 px-5 py-3.5 rounded-2xl border border-[#a5e8f7] bg-[#f7fdff] focus:ring-2 focus:ring-[#00B8E6] focus:bg-white outline-none shadow-sm transition"
           >
+            <option value="all">ทั้งหมด</option>
             <option value="similar">ความสนใจเหมือนกัน (≥3)</option>
             <option value="manual">เลือกหมวดหมู่เอง</option>
           </select>

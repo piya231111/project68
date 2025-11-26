@@ -17,7 +17,7 @@ export default function Lobby() {
         const user = res.data?.me;
         setMe(user);
 
-        // ✅ โหลดจาก localStorage
+        // โหลดจาก localStorage
         const storedAvatar = localStorage.getItem("sel_avatar");
         const storedItem = localStorage.getItem("sel_item");
         const storedCats = localStorage.getItem("sel_categories");
@@ -26,7 +26,7 @@ export default function Lobby() {
         if (storedItem) setItem(JSON.parse(storedItem));
         if (storedCats) setInterests(JSON.parse(storedCats));
 
-        // ✅ ใช้ข้อมูลจาก backend ถ้ามี
+        // ใช้ข้อมูลจาก backend ถ้ามี
         if (user?.avatar_id && storedAvatar)
           setAvatar(JSON.parse(storedAvatar));
         if (user?.item_id && storedItem)
@@ -58,15 +58,15 @@ export default function Lobby() {
       style={{ backgroundColor: "#E9FBFF" }}
     >
       <div className="w-full max-w-3xl bg-white rounded-3xl shadow-lg border border-[#d0f6ff] p-10 text-center">
-        {/* ✅ Title */}
+        {/* Title */}
         <h1 className="text-3xl font-bold text-[#00B8E6] mb-1">
           ยินดีต้อนรับ {me?.display_name || "ผู้ใช้ใหม่"}!
         </h1>
         <p className="text-gray-600 mb-8 text-base">
-          โปรไฟล์ของคุณถูกตั้งค่าเรียบร้อยแล้ว 🎉
+          โปรไฟล์ของคุณถูกตั้งค่าเรียบร้อยแล้ว 
         </p>
 
-        {/* ✅ Avatar + Item */}
+        {/* Avatar + Item */}
         <div className="relative mx-auto w-[200px] h-[280px] mb-8 rounded-2xl border-4 border-[#a5e8f7] bg-[#f0fdff] shadow-md flex items-center justify-center">
           {item && (
             <img
@@ -84,7 +84,7 @@ export default function Lobby() {
           )}
         </div>
 
-        {/* ✅ User Info */}
+        {/* User Info */}
         <div className="mb-6">
           <h2 className="text-xl font-bold text-[#00B8E6] mb-3">ข้อมูลของคุณ</h2>
           <div className="text-gray-700 text-sm space-y-1">
@@ -94,7 +94,7 @@ export default function Lobby() {
           </div>
         </div>
 
-        {/* ✅ Interests */}
+        {/* Interests */}
         <div className="mb-10">
           <h3 className="text-xl font-bold text-[#00B8E6] mb-4">หมวดหมู่ที่คุณสนใจ</h3>
           {interests.length > 0 ? (
@@ -113,7 +113,7 @@ export default function Lobby() {
           )}
         </div>
 
-        {/* ✅ ปุ่มย้อนกลับ + เริ่มต้นใช้งาน */}
+        {/* ปุ่มย้อนกลับ + เริ่มต้นใช้งาน */}
         <div className="flex justify-center gap-4">
           <button
             onClick={() => navigate("/setup/category", { replace: true })}

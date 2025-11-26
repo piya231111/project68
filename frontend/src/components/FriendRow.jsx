@@ -17,19 +17,18 @@ export default function FriendRow({
 }) {
   const [openMenu, setOpenMenu] = useState(false);
 
-  // ⭐ โหลด avatar & item จาก backend
   const [avatar, setAvatar] = useState(null);
   const [item, setItem] = useState(null);
+
+  // 🔥 สถานะออนไลน์แบบสด
+  const [isOnline, setIsOnline] = useState(friend.is_online);
 
   useEffect(() => {
     if (!friend) return;
 
-    console.log("FRIEND DATA =>", friend);
-
     // โหลด Avatar
     if (friend.avatar_id) {
       api.get(`/avatars/${friend.avatar_id}`).then((res) => {
-        console.log("AVATAR DATA =>", res.data);
         setAvatar(res.data);
       });
     }
@@ -37,10 +36,15 @@ export default function FriendRow({
     // โหลด Item
     if (friend.item_id) {
       api.get(`/items/${friend.item_id}`).then((res) => {
-        console.log("ITEM DATA =>", res.data);
         setItem(res.data);
       });
     }
+
+    // 🔥 โหลดสถานะออนไลน์ real-time
+    api.get(`/friends/${friend.id}/status`)
+      .then((res) => setIsOnline(res.data.is_online))
+      .catch(() => {});
+
   }, [friend]);
 
   return (
@@ -48,24 +52,21 @@ export default function FriendRow({
       className="py-4 px-3 flex justify-between items-center hover:bg-[#E9FBFF] transition-all rounded-xl cursor-pointer relative"
       onClick={onClick}
     >
-      {/* ===================== LEFT ===================== */}
       <div className="flex items-center flex-1 gap-3">
-        {/* Avatar + Item overlay */}
+        
+        {/* Avatar + Item */}
         <div className="relative w-14 h-14">
-
-          {/* ITEM (ด้านหลัง) */}
-          {item?.imageUrl && (
+          {item && (
             <img
-              src={item.imageUrl}
+              src={item.imageUrl || item.image_url}
               className="absolute inset-0 w-full h-full object-contain z-10 opacity-95"
               alt="item"
             />
           )}
 
-          {/* AVATAR (ด้านหน้า) */}
-          {avatar?.image_url ? (
+          {avatar ? (
             <img
-              src={avatar.image_url}
+              src={avatar.image_url || avatar.imageUrl}
               className="absolute inset-0 w-full h-full object-contain z-20"
               alt="avatar"
             />
@@ -74,14 +75,22 @@ export default function FriendRow({
               {friend.display_name?.charAt(0)?.toUpperCase()}
             </div>
           )}
-
         </div>
 
-        {/* Display name + Info */}
+        {/* ข้อมูลเพื่อน */}
         <div>
-          <p className="font-medium text-gray-800 flex items-center gap-1">
+          <p className="font-medium text-gray-800 flex items-center gap-2">
             {friend.display_name}
             {isFavorite && <span className="text-yellow-400">⭐</span>}
+          </p>
+
+          {/* 🟢 ออนไลน์ / ⚪ ออฟไลน์ */}
+          <p className="text-sm">
+            {isOnline ? (
+              <span className="text-green-500">🟢 ออนไลน์</span>
+            ) : (
+              <span className="text-gray-400">⚪ ออฟไลน์</span>
+            )}
           </p>
 
           <p className="text-sm text-gray-500">
@@ -91,9 +100,10 @@ export default function FriendRow({
         </div>
       </div>
 
-      {/* ===================== RIGHT ===================== */}
+      {/* ปุ่มต่าง ๆ */}
       <div className="flex items-center gap-3">
-        {/* Incoming friend request */}
+
+        {/* คำขอเข้ามา */}
         {isIncomingRequest && (
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             <button
@@ -111,7 +121,7 @@ export default function FriendRow({
           </div>
         )}
 
-        {/* Add friend */}
+        {/* ยังไม่ใช่เพื่อน */}
         {!isFriend && !isIncomingRequest && (
           <div onClick={(e) => e.stopPropagation()}>
             {isSentRequest ? (
@@ -127,7 +137,7 @@ export default function FriendRow({
           </div>
         )}
 
-        {/* Friend menu */}
+        {/* เพื่อนแล้ว → มีเมนู */}
         {isFriend && (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <button

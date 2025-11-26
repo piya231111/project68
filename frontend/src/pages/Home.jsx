@@ -10,35 +10,33 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true; // ป้องกัน StrictMode
+    let isMounted = true;
 
     (async () => {
       try {
-        // ===========================
-        // 1) โหลดข้อมูลผู้ใช้
-        // ===========================
-        const res = await api.get("/me");
+        // ===================================
+        // 1) ใช้ path ใหม่ที่ถูกต้อง: /auth/me
+        // ===================================
+        const res = await api.get("/auth/me");
         const user = res.data?.me;
 
-        console.log("🔥 HOME: /me =", user);
+        console.log("HOME: /auth/me =", user);
 
         if (!isMounted) return;
-
-        // ⭐ อัปเดตสถานะเลยก่อน
         setMe(user);
 
-        // ===========================
+        // ===================================
         // 2) โหลด avatar แบบ async
-        // ===========================
+        // ===================================
         if (user?.avatar_id) {
           api.get(`/avatars/${user.avatar_id}`).then(a => {
             if (isMounted) setAvatar(a.data);
           });
         }
 
-        // ===========================
+        // ===================================
         // 3) โหลด item แบบ async
-        // ===========================
+        // ===================================
         if (user?.item_id) {
           api.get(`/items/${user.item_id}`).then(i => {
             if (isMounted) setItem(i.data);
@@ -56,7 +54,6 @@ export default function Home() {
     return () => {
       isMounted = false;
     };
-
   }, [navigate]);
 
   if (loading) {
@@ -68,17 +65,15 @@ export default function Home() {
   }
 
   const menuItems = [
-    { name: "กิจกรรม", icon: "🎉" },
-    { name: "ร้านค้า", icon: "🛍️" },
+    { name: "ห้องแชท", icon: "🎉" },
     { name: "เพื่อน", icon: "🤝", path: "/friends" },
-    { name: "ข่าวสาร", icon: "📰" },
-    { name: "แชท", icon: "💬" },
+    { name: "ข้อความ", icon: "💬" },
     { name: "ตั้งค่า", icon: "⚙️" },
   ];
 
   return (
     <section className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
-      
+
       {/* SPOTLIGHT: User info */}
       <div className="flex flex-col items-center justify-center flex-1">
         <div className="relative w-[420px] h-[560px] flex items-center justify-center">
@@ -121,8 +116,7 @@ export default function Home() {
             <button
               key={m.name}
               onClick={() => m.path && navigate(m.path)}
-              className="bg-white rounded-2xl shadow px-8 py-6 w-48 text-center hover:scale-105 transition border border-[#d0f6ff]"
-            >
+              className="bg-white rounded-2xl shadow px-8 py-6 w-48 text-center hover:scale-105 transition border border-[#d0f6ff]">
               <div className="text-4xl mb-2">{m.icon}</div>
               <div className="text-[#00B8E6] font-semibold text-base">{m.name}</div>
             </button>

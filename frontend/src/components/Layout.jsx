@@ -5,7 +5,7 @@ import { api } from "../api";
 export default function Layout() {
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);   // ⭐ ป็อปอัปการตั้งค่า
+    const [settingsOpen, setSettingsOpen] = useState(false);   // ป็อปอัปการตั้งค่า
     const [me, setMe] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -24,15 +24,15 @@ export default function Layout() {
 
     const logout = async () => {
         try {
-            await api.post("/auth/logout");   // ⭐ แจ้ง backend ว่า user ออกจากระบบ
+            await api.post("/auth/logout");   //แจ้ง backend ว่า user ออกจากระบบ
         } catch (err) {
             console.error("logout error:", err);
         }
 
-        // ⭐ ล้าง token ออกจาก frontend
+        // ล้าง token ออกจาก frontend
         localStorage.removeItem("token");
 
-        // ⭐ เปลี่ยนหน้าไป login
+        // เปลี่ยนหน้าไป login
         navigate("/login", { replace: true });
     };
 
@@ -79,25 +79,25 @@ export default function Layout() {
                                 }}
                                 className="w-full text-left px-4 py-2 hover:bg-[#E9FBFF]"
                             >
-                                👤 โปรไฟล์
+                                โปรไฟล์
                             </button>
 
-                            {/* ⭐ เมนูใหม่: การตั้งค่า */}
+                            {/* เมนูใหม่: การตั้งค่า */}
                             <button
                                 onClick={() => {
                                     setMenuOpen(false);
-                                    setSettingsOpen(true);    // ⭐ เปิดป็อปอัป
+                                    setSettingsOpen(true);    // เปิดป็อปอัป
                                 }}
                                 className="w-full text-left px-4 py-2 hover:bg-[#E9FBFF]"
                             >
-                                ⚙️ การตั้งค่า
+                                การตั้งค่า
                             </button>
 
                             <button
                                 onClick={logout}
                                 className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50"
                             >
-                                🚪 ออกจากระบบ
+                                ออกจากระบบ
                             </button>
                         </div>
                     )}
@@ -108,7 +108,7 @@ export default function Layout() {
                 <Outlet />
             </div>
 
-            {/* ⭐ Modal ตั้งค่า */}
+            {/* Modal ตั้งค่า */}
             {settingsOpen && (
                 <div
                     className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[2000]"
@@ -127,7 +127,7 @@ export default function Layout() {
                         </button>
 
                         <h2 className="text-xl font-bold mb-4 text-gray-700">
-                            ⚙️ ตั้งค่า
+                            ตั้งค่า
                         </h2>
 
                         <div className="flex flex-col gap-3">

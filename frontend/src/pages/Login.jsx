@@ -9,14 +9,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ==========================
-  //  LOGIN ปกติ
-  // ==========================
+  // =====================================================
+  //  LOGIN แบบปกติ
+  // =====================================================
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // 🔹 Login
       const r = await api.post("/auth/login", {
         identifier: form.email.trim(),
         password: form.password,
@@ -25,18 +26,17 @@ export default function Login() {
       const token = r.data?.token;
       if (!token) throw new Error("No token returned");
 
-      // ⭐ เก็บ token + แนบ header
-      localStorage.setItem("token", token);
+      // 🔹 เก็บ token
       setToken(token);
 
-      // ⭐ รอ axios ตั้ง token + backend update online
-      await new Promise(res => setTimeout(res, 200));
+      // รอ backend อัปเดตสถานะ online
+      await new Promise((res) => setTimeout(res, 150));
 
-      // ⭐ ดึงข้อมูลโปรไฟล์ล่าสุด
-      const meRes = await api.get("/me");
+      // 🔹 ดึงข้อมูล me
+      const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
 
-      // ⭐ ไปหน้า appropriate path
+      // 🔹 เช็คว่า setup ครบไหม
       if (me?.country && me?.avatar_id && me?.item_id && me?.interests?.length > 0) {
         navigate("/home", { replace: true });
       } else {
@@ -51,13 +51,12 @@ export default function Login() {
     }
   };
 
-  // ==========================
+  // =====================================================
   //  LOGIN ด้วย Google OAuth
-  // ==========================
+  // =====================================================
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const data = jwtDecode(credentialResponse.credential);
-      console.log("Google payload:", data);
+      jwtDecode(credentialResponse.credential); // debug only
 
       const r = await api.post("/auth/google", {
         credential: credentialResponse.credential,
@@ -66,13 +65,12 @@ export default function Login() {
       const token = r.data?.token;
       if (!token) throw new Error("No token returned");
 
-      localStorage.setItem("token", token);
       setToken(token);
 
-      // ⭐ รอให้ backend อัปเดตออนไลน์เสร็จ
-      await new Promise(res => setTimeout(res, 200));
+      // รอ backend อัปเดต online
+      await new Promise((res) => setTimeout(res, 150));
 
-      const meRes = await api.get("/me");
+      const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
 
       if (me?.country && me?.avatar_id && me?.item_id && me?.interests?.length > 0) {
@@ -87,6 +85,9 @@ export default function Login() {
     }
   };
 
+  // =====================================================
+  //  UI LOGIN
+  // =====================================================
   return (
     <main className="min-h-screen w-screen flex items-center justify-center bg-[#E9FBFF]">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-10 border border-[#d0f6ff] text-center">

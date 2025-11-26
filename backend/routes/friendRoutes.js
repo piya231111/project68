@@ -28,6 +28,9 @@ router.get("/search", authRequired, searchFriends);
 // ดึงรายชื่อผู้ใช้ที่ถูกบล็อก
 router.get("/blocked", authRequired, getBlockedUsers);
 
+// ✔ ถูกต้อง — status ของเพื่อน
+router.get("/:id/status", authRequired, getFriendStatus);
+
 router.post("/request/:id", authRequired, sendFriendRequest);
 router.post("/accept/:id", authRequired, acceptFriendRequest);
 router.post("/decline/:id", authRequired, declineFriendRequest);
@@ -37,7 +40,5 @@ router.put("/:id/favorite", authRequired, toggleFavoriteFriend);
 
 router.post("/:id/block", authRequired, blockUser);
 router.delete("/:id/block", authRequired, unblockUser);
-
-router.get("/:id/status", authRequired, getFriendStatus);
 
 export default router;

@@ -114,7 +114,7 @@ export default function FriendsPage() {
                         onOpenDetail={(f) => {
                             setSelectedFriend({
                                 ...f,
-                                isFriend: true,   // ⭐ เป็นเพื่อนแล้ว
+                                isFriend: true,   // เป็นเพื่อนแล้ว
                             });
                             setShowFriendModal(true);
                         }}
@@ -131,7 +131,7 @@ export default function FriendsPage() {
                         onOpenDetail={(f) => {
                             setSelectedFriend({
                                 ...f,
-                                isFriend: false,  // ⭐ ยังไม่ใช่เพื่อน
+                                isFriend: false,  // ยังไม่ใช่เพื่อน
                             });
                             setShowFriendModal(true);
                         }}
@@ -143,13 +143,14 @@ export default function FriendsPage() {
                         <SearchSection
                             setShowCategoryModal={setShowCategoryModal}
                             setSelectedCategories={setSelectedCategories}
+                            selectedCategories={selectedCategories}
                             doSearch={doSearch}
                         />
                         <SearchResults
                             loading={loading}
                             results={searchResults}
                             sentRequests={sentRequests}
-                            incomingRequests={requests.map(r => r.from_user_id)}   // ⭐ เพิ่ม
+                            incomingRequests={requests.map(r => r.id)}
                             onSendRequest={sendRequest}
                             onAccept={acceptRequest}
                             onDecline={declineRequest}

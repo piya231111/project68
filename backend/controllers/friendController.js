@@ -40,6 +40,7 @@ export async function getFriends(req, res) {
 export async function getRequests(req, res) {
   try {
     const userId = req.user.id;
+
     const result = await pool.query(
       `
       SELECT 
@@ -49,17 +50,20 @@ export async function getRequests(req, res) {
         p.country,
         p.interests,
         p.avatar_id,
-        p.item_id
+        p.item_id,
+        p.is_online
       FROM friend_requests fr
       JOIN users u ON u.id = fr.sender_id
       LEFT JOIN profiles p ON p.user_id = u.id
-      WHERE fr.receiver_id = $1 AND fr.status = 'pending'
+      WHERE fr.receiver_id = $1 
+        AND fr.status = 'pending'
       ORDER BY fr.created_at DESC
       `,
       [userId]
     );
 
     res.json({ requests: result.rows });
+
   } catch (err) {
     console.error("getRequests error:", err);
     res.status(500).json({ error: "โหลดคำขอไม่สำเร็จ" });
@@ -106,7 +110,11 @@ export async function getPendingSentRequests(req, res) {
 export async function searchFriends(req, res) {
   try {
     const userId = req.user.id;
-    let { q, country, category } = req.query;
+
+    let { q, country, category, mode } = req.query;
+
+    const params = [userId];
+    let i = 2;
 
     let query = `
       SELECT 
@@ -116,7 +124,8 @@ export async function searchFriends(req, res) {
         p.country, 
         p.interests,
         p.avatar_id,
-        p.item_id
+        p.item_id,
+        p.is_online
       FROM users u
       LEFT JOIN profiles p ON p.user_id = u.id
       WHERE u.id != $1
@@ -127,9 +136,6 @@ export async function searchFriends(req, res) {
           SELECT blocker_id FROM blocked_users WHERE blocked_id = $1
         )
     `;
-
-    const params = [userId];
-    let i = 2;
 
     if (q) {
       query += ` AND (u.display_name ILIKE $${i} OR u.email ILIKE $${i})`;
@@ -143,14 +149,30 @@ export async function searchFriends(req, res) {
       i++;
     }
 
-    if (category) {
-      const cats = Array.isArray(category) ? category : [category];
-      query += ` AND p.interests && ARRAY[${cats.map((_, idx) => `$${i + idx}`).join(", ")}]`;
-      cats.forEach((c) => params.push(c));
-      i += cats.length;
+    if (mode === "similar") {
+      query += `
+        AND (
+          SELECT COUNT(*)
+          FROM unnest(p.interests) AS t(interest)
+          WHERE interest = ANY(
+            SELECT unnest(interests) 
+            FROM profiles WHERE user_id = $1
+          )
+        ) >= 3
+      `;
     }
 
-    query += " ORDER BY u.display_name LIMIT 50";
+    if (mode === "manual" && category) {
+      const cats = Array.isArray(category) ? category : [category];
+
+      query += ` AND p.interests && ARRAY[${cats
+        .map(() => `$${i++}`)
+        .join(", ")}]`;
+
+      cats.forEach((c) => params.push(c));
+    }
+
+    query += ` ORDER BY u.display_name ASC LIMIT 50`;
 
     const result = await pool.query(query, params);
     res.json({ results: result.rows });
@@ -160,7 +182,6 @@ export async function searchFriends(req, res) {
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการค้นหาเพื่อน" });
   }
 }
-
 
 // ส่งคำขอเพื่อน (เวอร์ชันแก้แล้ว)
 export async function sendFriendRequest(req, res) {

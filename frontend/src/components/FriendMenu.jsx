@@ -15,7 +15,7 @@ export default function FriendMenu({
         }}
         className="w-full text-left px-4 py-2 hover:bg-yellow-50 text-yellow-600 rounded-t-xl"
       >
-        {isFavorite ? "⭐ เอาดาวออก" : "⭐ ปักดาวเพื่อน"}
+        {isFavorite ? "เอาดาวออก" : "ปักดาวเพื่อน"}
       </button>
 
       {/* ลบเพื่อน */}
@@ -28,7 +28,7 @@ export default function FriendMenu({
         }}
         className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 rounded-b-xl"
       >
-        ❌ ลบเพื่อน
+        ลบเพื่อน
       </button>
     </div>
   );
