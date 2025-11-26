@@ -9,10 +9,13 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // ✅ เข้าสู่ระบบปกติ
+  // ==========================
+  //  LOGIN ปกติ
+  // ==========================
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
       const r = await api.post("/auth/login", {
         identifier: form.email.trim(),
@@ -22,22 +25,24 @@ export default function Login() {
       const token = r.data?.token;
       if (!token) throw new Error("No token returned");
 
-      // เก็บ token ไว้ใน localStorage และแนบใน header
+      // ⭐ เก็บ token + แนบ header
       localStorage.setItem("token", token);
       setToken(token);
 
-      // ✅ ดึงข้อมูลโปรไฟล์หลัง login
+      // ⭐ รอ axios ตั้ง token + backend update online
+      await new Promise(res => setTimeout(res, 200));
+
+      // ⭐ ดึงข้อมูลโปรไฟล์ล่าสุด
       const meRes = await api.get("/me");
       const me = meRes.data?.me;
 
-      // ✅ ตรวจว่ามีข้อมูล setup ครบไหม
+      // ⭐ ไปหน้า appropriate path
       if (me?.country && me?.avatar_id && me?.item_id && me?.interests?.length > 0) {
-        // เคย setup แล้ว → ไปหน้า home
         navigate("/home", { replace: true });
       } else {
-        // ยังไม่เคย setup → เริ่มที่เลือกประเทศ
         navigate("/setup/country", { replace: true });
       }
+
     } catch (err) {
       console.error(err);
       alert(err?.response?.data?.error || "เข้าสู่ระบบไม่สำเร็จ");
@@ -46,7 +51,9 @@ export default function Login() {
     }
   };
 
-  // ✅ เข้าสู่ระบบด้วย Google OAuth
+  // ==========================
+  //  LOGIN ด้วย Google OAuth
+  // ==========================
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       const data = jwtDecode(credentialResponse.credential);
@@ -62,7 +69,9 @@ export default function Login() {
       localStorage.setItem("token", token);
       setToken(token);
 
-      // ✅ ตรวจ setup เหมือนกัน
+      // ⭐ รอให้ backend อัปเดตออนไลน์เสร็จ
+      await new Promise(res => setTimeout(res, 200));
+
       const meRes = await api.get("/me");
       const me = meRes.data?.me;
 
@@ -71,6 +80,7 @@ export default function Login() {
       } else {
         navigate("/setup/country", { replace: true });
       }
+
     } catch (err) {
       console.error("Google login error:", err);
       alert("Google login failed");
@@ -78,20 +88,18 @@ export default function Login() {
   };
 
   return (
-    <main
-      className="min-h-screen w-screen flex items-center justify-center"
-      style={{ backgroundColor: "#E9FBFF" }}
-    >
+    <main className="min-h-screen w-screen flex items-center justify-center bg-[#E9FBFF]">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-10 border border-[#d0f6ff] text-center">
-        {/* ✅ หัวเรื่อง */}
+
         <h1 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: "#00B8E6" }}>
           เข้าสู่ระบบ
         </h1>
+
         <p className="text-gray-600 mb-8">
           ยินดีต้อนรับกลับ! โปรดเข้าสู่ระบบเพื่อดำเนินการต่อ
         </p>
 
-        {/* ✅ ฟอร์มล็อกอิน */}
+        {/* ฟอร์ม login */}
         <form onSubmit={submit} className="space-y-5 text-left">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -135,13 +143,13 @@ export default function Login() {
           </button>
         </form>
 
-        {/* ✅ เส้นคั่น */}
+        {/* เส้นคั่น */}
         <div className="my-6 text-sm text-gray-500 relative">
           <div className="absolute left-0 right-0 h-px bg-gray-200 top-1/2"></div>
           <span className="relative bg-white px-3 text-gray-500">หรือ</span>
         </div>
 
-        {/* ✅ ปุ่ม Google Login */}
+        {/* ปุ่ม Google Login */}
         <div className="flex justify-center mb-4">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
@@ -149,7 +157,6 @@ export default function Login() {
           />
         </div>
 
-        {/* ✅ ลิงก์ไปสมัครสมาชิก */}
         <p className="text-sm text-center text-gray-600 mt-6">
           ยังไม่มีบัญชี?{" "}
           <Link to="/register" className="text-[#00B8E6] hover:text-[#00DDFF] font-medium">

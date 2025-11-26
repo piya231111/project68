@@ -25,7 +25,7 @@ router.get("/requests", authRequired, getRequests);
 router.get("/sent", authRequired, getPendingSentRequests);
 router.get("/search", authRequired, searchFriends);
 
-// ⭐ ดึงรายชื่อผู้ใช้ที่ถูกบล็อก
+// ดึงรายชื่อผู้ใช้ที่ถูกบล็อก
 router.get("/blocked", authRequired, getBlockedUsers);
 
 router.post("/request/:id", authRequired, sendFriendRequest);

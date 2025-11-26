@@ -4,7 +4,7 @@ import path from "path";
 
 const router = express.Router();
 
-// ✅ GET /api/items - ดึง item ทั้งหมด
+// GET /api/items - ดึง item ทั้งหมด
 router.get("/", (req, res) => {
   try {
     const folderPath = path.resolve("uploads/items");
@@ -23,7 +23,7 @@ router.get("/", (req, res) => {
   }
 });
 
-// ✅ GET /api/items/:id - ดึง item ตาม id
+// GET /api/items/:id - ดึง item ตาม id
 router.get("/:id", (req, res) => {
   try {
     const folderPath = path.resolve("uploads/items");

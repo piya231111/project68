@@ -11,7 +11,7 @@ function generateToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
 }
 
-// ✅ REGISTER (เวอร์ชันสุดท้าย)
+// REGISTER
 export async function register(req, res) {
   try {
     const { email, password, displayName } = req.body;
@@ -33,7 +33,7 @@ export async function register(req, res) {
 
     const user = result.rows[0];
 
-    // ⭐ สร้าง profile ทันที
+    // สร้าง profile ทันที
     await pool.query(
       `INSERT INTO profiles (user_id, is_online, last_seen)
        VALUES ($1, true, NOW())`,
@@ -50,7 +50,7 @@ export async function register(req, res) {
   }
 }
 
-// ✅ LOGIN
+//LOGIN
 export async function login(req, res) {
   try {
     const { identifier, password } = req.body;
@@ -88,7 +88,7 @@ export async function login(req, res) {
   }
 }
 
-// ✅ GOOGLE LOGIN
+//GOOGLE LOGIN
 export async function googleLogin(req, res) {
   try {
     const { credential } = req.body;
@@ -108,7 +108,7 @@ export async function googleLogin(req, res) {
     let result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     let user = result.rows[0];
 
-    // ⭐ ยังไม่มี user → สร้างใหม่
+    //ยังไม่มี user → สร้างใหม่
     if (!user) {
       const insert = await pool.query(
         `INSERT INTO users (email, display_name)
@@ -119,7 +119,7 @@ export async function googleLogin(req, res) {
       user = insert.rows[0];
     }
 
-    // ⭐ บังคับสร้าง profile หรืออัปเดตออนไลน์เสมอ
+    //บังคับสร้าง profile หรืออัปเดตออนไลน์เสมอ
     await pool.query(
       `INSERT INTO profiles (user_id, is_online, last_seen)
        VALUES ($1, true, NOW())
@@ -138,7 +138,7 @@ export async function googleLogin(req, res) {
   }
 }
 
-// ✅ LOGOUT
+// LOGOUT
 export async function logout(req, res) {
   try {
     const userId = req.user.id;
@@ -158,12 +158,12 @@ export async function logout(req, res) {
   }
 }
 
-// ✅ GET ME (พร้อมอัปเดตสถานะออนไลน์ทุกครั้ง)
+// GET ME (พร้อมอัปเดตสถานะออนไลน์ทุกครั้ง)
 export async function getMe(req, res) {
   try {
     const userId = req.user.id;
 
-    // ⭐ บังคับสร้างหรืออัปเดต online ทุกครั้ง
+    // อัปเดตสถานะออนไลน์
     await pool.query(
       `INSERT INTO profiles (user_id, is_online, last_seen)
        VALUES ($1, true, NOW())
@@ -189,15 +189,17 @@ export async function getMe(req, res) {
       [userId]
     );
 
+    console.log("GET ME RESULT =", result.rows[0]); //DEBUG สำคัญ
+
     res.json({ me: result.rows[0] });
 
   } catch (err) {
-    console.error("🔥 GETME ERROR:", err);
+    console.error("GETME ERROR:", err);
     res.status(500).json({ error: "ไม่สามารถดึงข้อมูลผู้ใช้ได้" });
   }
 }
 
-// ✅ UPDATE ME (แก้ไขโปรไฟล์)
+// UPDATE ME (แก้ไขโปรไฟล์)
 export async function updateMe(req, res) {
   try {
     const userId = req.user.id;
@@ -247,7 +249,7 @@ export async function updateMe(req, res) {
       );
     }
 
-    // ⭐ ส่งข้อมูลกลับพร้อม is_online + last_seen
+    // ส่งข้อมูลกลับพร้อม is_online + last_seen
     const result = await pool.query(
       `SELECT 
           u.id, 
@@ -268,7 +270,7 @@ export async function updateMe(req, res) {
     res.json({ success: true, me: result.rows[0] });
 
   } catch (err) {
-    console.error("🔥 UPDATE ERROR:", err.stack);
+    console.error("UPDATE ERROR:", err.stack);
     res.status(500).json({ error: "ไม่สามารถอัปเดตข้อมูลผู้ใช้ได้" });
   }
 }

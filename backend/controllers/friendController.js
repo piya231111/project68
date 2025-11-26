@@ -1,6 +1,6 @@
 import { pool } from "../db.js";
 
-// ✅ ดึงรายชื่อเพื่อนที่ยอมรับแล้ว
+// ดึงรายชื่อเพื่อนที่ยอมรับแล้ว
 export async function getFriends(req, res) {
   try {
     const userId = req.user.id;
@@ -36,7 +36,7 @@ export async function getFriends(req, res) {
   }
 }
 
-// ✅ ดึงคำขอเพื่อนที่ยังรออยู่
+// ดึงคำขอเพื่อนที่ยังรออยู่
 export async function getRequests(req, res) {
   try {
     const userId = req.user.id;
@@ -66,7 +66,7 @@ export async function getRequests(req, res) {
   }
 }
 
-// ✅ ดึงคำขอเพื่อนที่เราส่งออกไป (ยัง pending)
+// ดึงคำขอเพื่อนที่เราส่งออกไป (ยัง pending)
 export async function getPendingSentRequests(req, res) {
   try {
     const userId = req.user.id;
@@ -93,8 +93,8 @@ export async function getPendingSentRequests(req, res) {
     );
 
     res.json({
-      sent: result.rows.map((r) => r.id), // ✅ ส่งเฉพาะ id กลับให้ frontend ใช้เช็ค
-      details: result.rows, // ✅ เผื่ออนาคตต้องใช้รายละเอียด
+      sent: result.rows.map((r) => r.id), // ส่งเฉพาะ id กลับให้ frontend ใช้เช็ค
+      details: result.rows, //เผื่ออนาคตต้องใช้รายละเอียด
     });
   } catch (err) {
     console.error("getPendingSentRequests error:", err);
@@ -102,7 +102,7 @@ export async function getPendingSentRequests(req, res) {
   }
 }
 
-// ✅ ค้นหาผู้ใช้ (มี filter: q, country, category + ซ่อนคนที่บล็อคกัน)
+// ค้นหาผู้ใช้ (มี filter: q, country, category + ซ่อนคนที่บล็อคกัน)
 export async function searchFriends(req, res) {
   try {
     const userId = req.user.id;
@@ -162,21 +162,21 @@ export async function searchFriends(req, res) {
 }
 
 
-// ✅ ส่งคำขอเพื่อน (เวอร์ชันแก้แล้ว)
+// ส่งคำขอเพื่อน (เวอร์ชันแก้แล้ว)
 export async function sendFriendRequest(req, res) {
   try {
     const senderId = req.user.id;
     const receiverId = req.params.id;
 
     if (senderId === receiverId)
-      return res.status(400).json({ error: "❌ ไม่สามารถเพิ่มเพื่อนตัวเองได้" });
+      return res.status(400).json({ error: "ไม่สามารถเพิ่มเพื่อนตัวเองได้" });
 
     // ตรวจว่าผู้ใช้ปลายทางมีจริง
     const checkUser = await pool.query("SELECT id FROM users WHERE id = $1", [receiverId]);
     if (checkUser.rowCount === 0)
       return res.status(404).json({ error: "ไม่พบผู้ใช้ปลายทาง" });
 
-    // ⭐ ลบคำขอเก่าออกก่อน (กันส่งใหม่แล้ว error)
+    // ลบคำขอเก่าออกก่อน (กันส่งใหม่แล้ว error)
     await pool.query(
       `
       DELETE FROM friend_requests
@@ -186,7 +186,7 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    // ⭐ ล้างข้อมูลเพื่อนเก่า (กัน error)
+    // ล้างข้อมูลเพื่อนเก่า (กัน error)
     await pool.query(
       `
       DELETE FROM friends
@@ -222,7 +222,7 @@ export async function sendFriendRequest(req, res) {
     if (existFriend.rowCount > 0)
       return res.status(400).json({ error: "มีคำขอหรือเป็นเพื่อนอยู่แล้ว" });
 
-    // ⭐ เพิ่มคำขอใหม่
+    // เพิ่มคำขอใหม่
     await pool.query(
       `
       INSERT INTO friend_requests (sender_id, receiver_id, status)
@@ -231,7 +231,7 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    res.json({ success: true, message: "✅ ส่งคำขอเป็นเพื่อนสำเร็จ" });
+    res.json({ success: true, message: "ส่งคำขอเป็นเพื่อนสำเร็จ" });
   } catch (err) {
     console.error("sendFriendRequest error:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการส่งคำขอ" });
@@ -239,7 +239,7 @@ export async function sendFriendRequest(req, res) {
 }
 
 
-// ✅ ยอมรับคำขอเพื่อน
+// ยอมรับคำขอเพื่อน
 export async function acceptFriendRequest(req, res) {
   try {
     const receiverId = req.user.id;
@@ -276,14 +276,14 @@ export async function acceptFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    res.json({ success: true, message: "✅ ยอมรับคำขอสำเร็จ" });
+    res.json({ success: true, message: "ยอมรับคำขอสำเร็จ" });
   } catch (err) {
     console.error("acceptFriendRequest error:", err);
     res.status(500).json({ error: "ยอมรับคำขอไม่สำเร็จ" });
   }
 }
 
-// ✅ ปฏิเสธคำขอเพื่อน
+// ปฏิเสธคำขอเพื่อน
 export async function declineFriendRequest(req, res) {
   try {
     const receiverId = req.user.id;   // คนที่ถูกขอ
@@ -301,7 +301,7 @@ export async function declineFriendRequest(req, res) {
     if (check.rowCount === 0)
       return res.status(404).json({ error: "ไม่พบคำขอที่รออยู่" });
 
-    // ✅ อัปเดตสถานะเป็น rejected
+    // อัปเดตสถานะเป็น rejected
     await pool.query(
       `
       UPDATE friend_requests
@@ -311,14 +311,14 @@ export async function declineFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    res.json({ success: true, message: "❌ ปฏิเสธคำขอแล้ว" });
+    res.json({ success: true, message: "ปฏิเสธคำขอแล้ว" });
   } catch (err) {
     console.error("declineFriendRequest error:", err);
     res.status(500).json({ error: "ปฏิเสธคำขอไม่สำเร็จ" });
   }
 }
 
-// ✅ ลบเพื่อน (เวอร์ชันแก้แล้ว)
+// ลบเพื่อน (เวอร์ชันแก้แล้ว)
 export async function deleteFriend(req, res) {
   try {
     const userId = req.user.id;      // คนที่ล็อกอิน
@@ -340,7 +340,7 @@ export async function deleteFriend(req, res) {
       return res.status(404).json({ error: "ไม่พบเพื่อนคนนี้ในรายชื่อของคุณ" });
     }
 
-    // ⭐ ลบความเป็นเพื่อนทั้งสองฝั่ง
+    // ลบความเป็นเพื่อนทั้งสองฝั่ง
     await pool.query(
       `
       DELETE FROM friends
@@ -351,7 +351,7 @@ export async function deleteFriend(req, res) {
       [userId, friendId]
     );
 
-    // ⭐ ลบคำขอเก่าทั้งหมด (สำคัญมาก)
+    // ลบคำขอเก่าทั้งหมด (สำคัญมาก)
     await pool.query(
       `
       DELETE FROM friend_requests
@@ -362,14 +362,14 @@ export async function deleteFriend(req, res) {
       [userId, friendId]
     );
 
-    res.json({ success: true, message: "ลบเพื่อนสำเร็จ ✅" });
+    res.json({ success: true, message: "ลบเพื่อนสำเร็จ" });
   } catch (err) {
     console.error("deleteFriend error:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการลบเพื่อน" });
   }
 }
 
-// ✅ ปักดาว / เอาดาวออกเพื่อน (อัปเดตสองฝั่ง)
+// ปักดาว / เอาดาวออกเพื่อน (อัปเดตสองฝั่ง)
 export async function toggleFavoriteFriend(req, res) {
   try {
     const userId = req.user.id;
@@ -395,7 +395,7 @@ export async function toggleFavoriteFriend(req, res) {
     const current = check.rows[0].is_favorite ?? false;
     const newFavorite = !current;
 
-    // ✅ อัปเดตทั้งสองทิศทาง
+    // อัปเดตทั้งสองทิศทาง
     await pool.query(
       `
       UPDATE friends
@@ -409,7 +409,7 @@ export async function toggleFavoriteFriend(req, res) {
 
     res.json({
       success: true,
-      message: newFavorite ? "⭐ ปักดาวเพื่อนแล้ว!" : "❌ เอาดาวออกแล้ว",
+      message: newFavorite ? "ปักดาวเพื่อนแล้ว!" : "เอาดาวออกแล้ว",
       is_favorite: newFavorite,
     });
   } catch (err) {
@@ -418,7 +418,7 @@ export async function toggleFavoriteFriend(req, res) {
   }
 }
 
-// ✅ ดึงรายชื่อผู้ใช้ที่ถูกบล็อก
+// ดึงรายชื่อผู้ใช้ที่ถูกบล็อก
 export async function getBlockedUsers(req, res) {
   try {
     const userId = req.user.id;
@@ -444,7 +444,7 @@ export async function getBlockedUsers(req, res) {
   }
 }
 
-// ✅ บล็อคผู้ใช้
+// บล็อคผู้ใช้
 export async function blockUser(req, res) {
   try {
     const blockerId = req.user.id;
@@ -484,14 +484,14 @@ export async function blockUser(req, res) {
       [blockerId, blockedId]
     );
 
-    res.json({ success: true, message: "🚫 บล็อคผู้ใช้เรียบร้อยแล้ว" });
+    res.json({ success: true, message: "บล็อคผู้ใช้เรียบร้อยแล้ว" });
   } catch (err) {
     console.error("blockUser error:", err);
     res.status(500).json({ error: "ไม่สามารถบล็อคผู้ใช้ได้" });
   }
 }
 
-// ✅ ยกเลิกการบล็อค
+// ยกเลิกการบล็อค
 export async function unblockUser(req, res) {
   try {
     const blockerId = req.user.id;
@@ -502,14 +502,14 @@ export async function unblockUser(req, res) {
       [blockerId, blockedId]
     );
 
-    res.json({ success: true, message: "✅ ยกเลิกการบล็อคสำเร็จ" });
+    res.json({ success: true, message: "ยกเลิกการบล็อคสำเร็จ" });
   } catch (err) {
     console.error("unblockUser error:", err);
     res.status(500).json({ error: "ไม่สามารถยกเลิกบล็อคได้" });
   }
 }
 
-// ✅ ดึงสถานะออนไลน์ของเพื่อนแบบ Real-time
+// ดึงสถานะออนไลน์ของเพื่อนแบบ Real-time
 export async function getFriendStatus(req, res) {
   try {
     const friendId = req.params.id;

@@ -4,7 +4,7 @@ import path from "path";
 
 const router = express.Router();
 
-// ✅ GET /api/avatars - ดึงอวตาร์ทั้งหมด
+// GET /api/avatars - ดึงอวตาร์ทั้งหมด
 router.get("/", (req, res) => {
   try {
     const folderPath = path.resolve("uploads/avatars");
@@ -23,7 +23,7 @@ router.get("/", (req, res) => {
   }
 });
 
-// ✅ GET /api/avatars/:id - ดึงอวตาร์ตาม id
+// GET /api/avatars/:id - ดึงอวตาร์ตาม id
 router.get("/:id", (req, res) => {
   try {
     const folderPath = path.resolve("uploads/avatars");

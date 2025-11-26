@@ -10,31 +10,53 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true; // ป้องกัน StrictMode
+
     (async () => {
       try {
+        // ===========================
+        // 1) โหลดข้อมูลผู้ใช้
+        // ===========================
         const res = await api.get("/me");
-
-        console.log("📌 RESPONSE FROM /me =", res.data.me);  // 👈 เพิ่มตรงนี้
-
         const user = res.data?.me;
+
+        console.log("🔥 HOME: /me =", user);
+
+        if (!isMounted) return;
+
+        // ⭐ อัปเดตสถานะเลยก่อน
         setMe(user);
 
+        // ===========================
+        // 2) โหลด avatar แบบ async
+        // ===========================
         if (user?.avatar_id) {
-          const avatarRes = await api.get(`/avatars/${user.avatar_id}`);
-          setAvatar(avatarRes.data);
+          api.get(`/avatars/${user.avatar_id}`).then(a => {
+            if (isMounted) setAvatar(a.data);
+          });
         }
 
+        // ===========================
+        // 3) โหลด item แบบ async
+        // ===========================
         if (user?.item_id) {
-          const itemRes = await api.get(`/items/${user.item_id}`);
-          setItem(itemRes.data);
+          api.get(`/items/${user.item_id}`).then(i => {
+            if (isMounted) setItem(i.data);
+          });
         }
+
       } catch (err) {
         console.error("โหลดข้อมูลไม่สำเร็จ:", err);
         navigate("/login", { replace: true });
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
+
+    return () => {
+      isMounted = false;
+    };
+
   }, [navigate]);
 
   if (loading) {
@@ -45,7 +67,6 @@ export default function Home() {
     );
   }
 
-  // ✅ เมนูพร้อม path สำหรับ navigation
   const menuItems = [
     { name: "กิจกรรม", icon: "🎉" },
     { name: "ร้านค้า", icon: "🛍️" },
@@ -57,9 +78,11 @@ export default function Home() {
 
   return (
     <section className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
-      {/* ฝั่งซ้าย: อวตาร์ */}
+      
+      {/* SPOTLIGHT: User info */}
       <div className="flex flex-col items-center justify-center flex-1">
         <div className="relative w-[420px] h-[560px] flex items-center justify-center">
+
           {item && (
             <img
               src={item.image_url || item.imageUrl}
@@ -67,6 +90,7 @@ export default function Home() {
               className="absolute inset-0 w-full h-full object-contain z-10 opacity-95"
             />
           )}
+
           {avatar && (
             <img
               src={avatar.image_url || avatar.imageUrl}
@@ -76,8 +100,9 @@ export default function Home() {
           )}
         </div>
 
+        {/* ชื่อ + สถานะออนไลน์ */}
         <h2 className="mt-6 text-2xl font-bold text-[#00B8E6] flex items-center gap-3">
-          {me?.display_name || "ผู้ใช้ใหม่"}
+          {me?.display_name}
 
           {me?.is_online ? (
             <span className="text-green-500 text-base">🟢 ออนไลน์</span>
@@ -89,13 +114,13 @@ export default function Home() {
         <p className="text-gray-600 text-lg">{me?.country || "-"}</p>
       </div>
 
-      {/* ฝั่งขวา: เมนู */}
+      {/* เมนู */}
       <div className="flex flex-1 items-center justify-center">
         <div className="grid grid-cols-2 gap-6">
           {menuItems.map((m) => (
             <button
               key={m.name}
-              onClick={() => m.path && navigate(m.path)} // ✅ เพิ่มการนำทาง
+              onClick={() => m.path && navigate(m.path)}
               className="bg-white rounded-2xl shadow px-8 py-6 w-48 text-center hover:scale-105 transition border border-[#d0f6ff]"
             >
               <div className="text-4xl mb-2">{m.icon}</div>
@@ -104,6 +129,7 @@ export default function Home() {
           ))}
         </div>
       </div>
+
     </section>
   );
 }

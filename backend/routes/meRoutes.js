@@ -5,9 +5,7 @@ import { authRequired } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-/**
- * ✅ GET /api/me - ดึงข้อมูลผู้ใช้พร้อมโปรไฟล์
- */
+//GET /api/me - ดึงข้อมูลผู้ใช้พร้อมโปรไฟล์
 router.get("/", authRequired, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -33,15 +31,15 @@ router.get("/", authRequired, async (req, res) => {
 
     res.json({ me: userResult.rows[0] });
   } catch (err) {
-    console.error("❌ GET /me error:", err);
+    console.error("GET /me error:", err);
     res.status(500).json({ error: "Failed to load user" });
   }
 });
 
-/**
- * ✅ POST /api/me/profile
- * อัปเดตข้อมูลโปรไฟล์ (country / avatarId / itemId / interests)
- */
+
+ //POST /api/me/profile
+ //อัปเดตข้อมูลโปรไฟล์ (country / avatarId / itemId / interests)
+
 router.post("/profile", authRequired, async (req, res) => {
   const userId = req.user.id;
   const { country, avatarId, itemId, interests } = req.body;
@@ -51,14 +49,14 @@ router.post("/profile", authRequired, async (req, res) => {
   console.log("📦 body:", req.body);
 
   try {
-    // ✅ ตรวจว่ามี profile อยู่ไหม
+    // ตรวจว่ามี profile อยู่ไหม
     const check = await pool.query(
       "SELECT * FROM profiles WHERE user_id = $1",
       [userId]
     );
 
     if (check.rows.length > 0) {
-      // ✅ อัปเดตเฉพาะฟิลด์ที่ส่งมา (ใช้ COALESCE เพื่อไม่เขียนทับของเดิม)
+      // อัปเดตเฉพาะฟิลด์ที่ส่งมา (ใช้ COALESCE เพื่อไม่เขียนทับของเดิม)
       await pool.query(
         `UPDATE profiles 
          SET country   = COALESCE($1, country),
@@ -70,12 +68,12 @@ router.post("/profile", authRequired, async (req, res) => {
           country || null,
           avatarId || null,
           itemId || null,
-          Array.isArray(interests) ? interests : null, // ✅ บังคับให้ interests เป็น array
+          Array.isArray(interests) ? interests : null, // บังคับให้ interests เป็น array
           userId,
         ]
       );
     } else {
-      // ✅ ถ้ายังไม่มี profile → สร้างใหม่
+      // ถ้ายังไม่มี profile → สร้างใหม่
       await pool.query(
         `INSERT INTO profiles (user_id, country, avatar_id, item_id, interests)
          VALUES ($1, $2, $3, $4, $5)`,
@@ -91,7 +89,7 @@ router.post("/profile", authRequired, async (req, res) => {
 
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ [ERROR] POST /me/profile:", err);
+    console.error("[ERROR] POST /me/profile:", err);
     res.status(500).json({ error: "Failed to update profile" });
   }
 });
