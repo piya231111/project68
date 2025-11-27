@@ -15,8 +15,7 @@ import AvatarSelect from "./pages/profile/AvatarSelect";
 import ItemSelect from "./pages/profile/ItemSelect";
 import FriendsPage from "./pages/friends/FriendsPage";
 import ManageFriends from "./pages/friends/ManageFriends";
-
-
+import Notifications from "./pages/Notifications";
 
 function App() {
   return (
@@ -42,6 +41,7 @@ function App() {
           <Route path="/profile/item" element={<ItemSelect />} />
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/friends/manage" element={<ManageFriends />} />
+          <Route path="/notifications" element={<Notifications />} />
         </Route>
 
         {/* ✅ กลุ่ม Setup (ไม่มี Header) */}

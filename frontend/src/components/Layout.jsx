@@ -9,6 +9,8 @@ export default function Layout() {
     const [me, setMe] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const [notificationCount, setNotificationCount] = useState(0);
+
     useEffect(() => {
         (async () => {
             try {
@@ -22,17 +24,29 @@ export default function Layout() {
         })();
     }, [navigate]);
 
+    useEffect(() => {
+        const loadCount = async () => {
+            try {
+                const res = await api.get("/notifications/count");
+                setNotificationCount(res.data.count);
+            } catch (err) {
+                console.error("notification count error:", err);
+            }
+        };
+
+        loadCount(); // ดึงครั้งแรก
+        const interval = setInterval(loadCount, 5000); // ดึงซ้ำทุก 5 วิ
+
+        return () => clearInterval(interval);
+    }, []);
+
     const logout = async () => {
         try {
-            await api.post("/auth/logout");   //แจ้ง backend ว่า user ออกจากระบบ
+            await api.post("/auth/logout");
         } catch (err) {
             console.error("logout error:", err);
         }
-
-        // ล้าง token ออกจาก frontend
         localStorage.removeItem("token");
-
-        // เปลี่ยนหน้าไป login
         navigate("/login", { replace: true });
     };
 
@@ -55,7 +69,46 @@ export default function Layout() {
                     Star World
                 </h1>
 
-                <div className="flex items-center gap-2 relative">
+                <div className="flex items-center gap-3 relative">
+
+                    {/* 🔔 Notification Button ———— เพิ่มตรงนี้ */}
+                    <button
+                        onClick={() => navigate("/notifications")}
+                        className="relative p-2 rounded-full hover:bg-gray-100 transition"
+                        title="แจ้งเตือน"
+                    >
+                        {/* ไอคอนกระดิ่งมินิมอล */}
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.8}
+                            stroke="#555"    // สีมินิมอล
+                            className="w-6 h-6"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M14.25 18.75h-4.5m8.25-6c0 3.182-1.318 5.25-6 5.25s-6-2.068-6-5.25V10.5a6 6 0 1112 0v2.25z"
+                            />
+                        </svg>
+
+                        {/* Badge แสดงจำนวนแจ้งเตือน */}
+                        {notificationCount > 0 && (
+                            <span
+                                className="
+                                absolute -top-1 -right-1 
+                                bg-red-500 text-white 
+                                text-xs px-1.5 py-0.5 
+                                rounded-full
+                                "
+                            >
+                                {notificationCount}
+                            </span>
+                        )}
+                    </button>
+
+                    {/* ชื่อผู้ใช้ */}
                     <p
                         onClick={() => navigate("/profile")}
                         className="text-gray-700 font-medium cursor-pointer hover:text-[#00B8E6]"
@@ -63,6 +116,7 @@ export default function Layout() {
                         {me?.display_name || me?.email}
                     </p>
 
+                    {/* ปุ่มเมนู ⋮ */}
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
                         className="p-2 rounded-full hover:bg-gray-100"
@@ -82,11 +136,11 @@ export default function Layout() {
                                 โปรไฟล์
                             </button>
 
-                            {/* เมนูใหม่: การตั้งค่า */}
+                            {/* เมนูการตั้งค่า */}
                             <button
                                 onClick={() => {
                                     setMenuOpen(false);
-                                    setSettingsOpen(true);    // เปิดป็อปอัป
+                                    setSettingsOpen(true);
                                 }}
                                 className="w-full text-left px-4 py-2 hover:bg-[#E9FBFF]"
                             >
@@ -108,7 +162,7 @@ export default function Layout() {
                 <Outlet />
             </div>
 
-            {/* Modal ตั้งค่า */}
+            {/* Modal การตั้งค่า */}
             {settingsOpen && (
                 <div
                     className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[2000]"
@@ -118,7 +172,6 @@ export default function Layout() {
                         className="bg-white w-full max-w-md p-6 rounded-2xl shadow-xl relative"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* ปิด */}
                         <button
                             className="absolute top-3 right-3 text-xl text-gray-500 hover:text-gray-800"
                             onClick={() => setSettingsOpen(false)}
@@ -134,14 +187,12 @@ export default function Layout() {
                             <button
                                 onClick={() => {
                                     setSettingsOpen(false);
-                                    navigate("/friends/manage"); // เส้นทางไปหน้าจัดการรายชื่อ
+                                    navigate("/friends/manage");
                                 }}
                                 className="w-full bg-[#00B8E6] text-white py-3 rounded-xl hover:bg-[#009ecc]"
                             >
                                 จัดการรายชื่อ
                             </button>
-
-                            {/* สามารถเพิ่มเมนูอื่นในอนาคต */}
                         </div>
                     </div>
                 </div>

@@ -197,7 +197,13 @@ export async function sendFriendRequest(req, res) {
     if (checkUser.rowCount === 0)
       return res.status(404).json({ error: "ไม่พบผู้ใช้ปลายทาง" });
 
-    // ลบคำขอเก่าออกก่อน (กันส่งใหม่แล้ว error)
+    // ดึงข้อมูลผู้ส่ง (เพื่อใช้ใน notification)
+    const sender = await pool.query(
+      `SELECT display_name FROM users WHERE id = $1`,
+      [senderId]
+    );
+
+    // ลบคำขอเก่า (กันซ้ำ)
     await pool.query(
       `
       DELETE FROM friend_requests
@@ -207,7 +213,7 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    // ล้างข้อมูลเพื่อนเก่า (กัน error)
+    // ล้างความเป็นเพื่อนเก่า (กัน error)
     await pool.query(
       `
       DELETE FROM friends
@@ -217,7 +223,7 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    // ตรวจคำขอซ้ำ (ถ้าหลังลบแล้วยังเจอ แสดงว่ามีปัญหา)
+    // ตรวจซ้ำอีกครั้ง
     const existReq = await pool.query(
       `
       SELECT 1 FROM friend_requests
@@ -230,7 +236,7 @@ export async function sendFriendRequest(req, res) {
     if (existReq.rowCount > 0)
       return res.status(400).json({ error: "มีคำขอหรือเป็นเพื่อนอยู่แล้ว" });
 
-    // ตรวจว่าเป็นเพื่อนอยู่แล้วไหม
+    // ตรวจเพื่อนเก่า
     const existFriend = await pool.query(
       `
       SELECT 1 FROM friends
@@ -252,13 +258,23 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
+    // ⭐ เพิ่มแจ้งเตือน
+    await pool.query(
+      `INSERT INTO notifications (user_id, type, title, body)
+       VALUES ($1, 'friend_request', 'คำขอเป็นเพื่อนใหม่', $2)`,
+      [
+        receiverId,  // คนที่ได้รับคำขอ
+        `${sender.rows[0].display_name} ส่งคำขอเป็นเพื่อนให้คุณ`
+      ]
+    );
+
     res.json({ success: true, message: "ส่งคำขอเป็นเพื่อนสำเร็จ" });
+
   } catch (err) {
     console.error("sendFriendRequest error:", err);
     res.status(500).json({ error: "เกิดข้อผิดพลาดในการส่งคำขอ" });
   }
 }
-
 
 // ยอมรับคำขอเพื่อน
 export async function acceptFriendRequest(req, res) {
@@ -552,5 +568,7 @@ export async function getFriendStatus(req, res) {
     res.status(500).json({ error: "ไม่สามารถโหลดสถานะออนไลน์ได้" });
   }
 }
+
+
 
 

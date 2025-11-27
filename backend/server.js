@@ -16,6 +16,7 @@ import meRoutes from "./routes/meRoutes.js";
 import avatarRoutes from "./routes/avatarRoutes.js";
 import itemsRoutes from "./routes/itemsRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/me", meRoutes);
 app.use("/api/avatars", avatarRoutes);
 app.use("/api/items", itemsRoutes);
 app.use("/api/friends", friendRoutes);
+app.use("/api", notificationRoutes);
 
 const PORT = process.env.PORT || 7000;
 app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
