@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { socket } from "../socket";
 
 export default function Layout() {
     const navigate = useNavigate();
@@ -23,6 +24,24 @@ export default function Layout() {
             }
         })();
     }, [navigate]);
+
+    useEffect(() => {
+        if (!me) return;
+
+        // ⭐ connect websocket
+        socket.connect();
+
+        // แจ้ง server ว่า user นี้ออนไลน์แล้ว
+        socket.emit("online", me.id);
+
+        console.log("🟢 Socket connected as:", me.id);
+
+        // cleanup เมื่อเปลี่ยนหน้า / logout
+        return () => {
+            socket.disconnect();
+            console.log("🔴 Socket disconnected");
+        };
+    }, [me]);
 
     useEffect(() => {
         const loadCount = async () => {

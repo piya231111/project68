@@ -1,9 +1,10 @@
 import { pool } from "../db.js";
 
-// จำนวนแจ้งเตือนที่ยังไม่อ่าน
+// จำนวนแจ้งเตือนยังไม่อ่าน
 export async function getNotificationCount(req, res) {
     try {
         const userId = req.user.id;
+
         const result = await pool.query(
             `SELECT COUNT(*) AS count 
              FROM notifications 
@@ -18,10 +19,11 @@ export async function getNotificationCount(req, res) {
     }
 }
 
-// รายการแจ้งเตือนทุกอัน
+// รายการแจ้งเตือนล่าสุด
 export async function getNotifications(req, res) {
     try {
         const userId = req.user.id;
+
         const result = await pool.query(
             `SELECT * FROM notifications 
              WHERE user_id = $1 
@@ -36,14 +38,17 @@ export async function getNotifications(req, res) {
     }
 }
 
-// mark ว่าอ่านแล้ว
+// Mark “อ่านแล้ว”
 export async function markNotificationRead(req, res) {
     try {
         const { id } = req.params;
+        const userId = req.user.id;
 
-        await pool.query(
-            `UPDATE notifications SET is_read = true WHERE id = $1`,
-            [id]
+        const result = await pool.query(
+            `UPDATE notifications 
+             SET is_read = true 
+             WHERE id = $1 AND user_id = $2`,
+            [id, userId]
         );
 
         res.json({ success: true });

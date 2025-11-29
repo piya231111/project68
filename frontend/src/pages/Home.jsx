@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { socket } from "../socket";   // ⭐ เพิ่มตรงนี้
 
 export default function Home() {
   const [me, setMe] = useState(null);
@@ -14,33 +15,34 @@ export default function Home() {
 
     (async () => {
       try {
-        // ===================================
-        // 1) ใช้ path ใหม่ที่ถูกต้อง: /auth/me
-        // ===================================
         const res = await api.get("/auth/me");
         const user = res.data?.me;
 
         console.log("HOME: /auth/me =", user);
 
         if (!isMounted) return;
+
         setMe(user);
 
-        // ===================================
-        // 2) โหลด avatar แบบ async
-        // ===================================
+        // Load avatar
         if (user?.avatar_id) {
           api.get(`/avatars/${user.avatar_id}`).then(a => {
             if (isMounted) setAvatar(a.data);
           });
         }
 
-        // ===================================
-        // 3) โหลด item แบบ async
-        // ===================================
+        // Load item
         if (user?.item_id) {
           api.get(`/items/${user.item_id}`).then(i => {
             if (isMounted) setItem(i.data);
           });
+        }
+
+        // ⭐⭐⭐ CONNECT SOCKET.IO หลังจากโหลด user สำเร็จ ⭐⭐⭐
+        if (user) {
+          console.log("🔌 Connecting WebSocket...");
+          socket.connect();                 // เชื่อม socket
+          socket.emit("online", user.id);   // แจ้ง backend ว่า user ออนไลน์
         }
 
       } catch (err) {
@@ -53,9 +55,16 @@ export default function Home() {
 
     return () => {
       isMounted = false;
+
+      // ⭐⭐⭐ Disconnect WebSocket เมื่อออกจาก Home ⭐⭐⭐
+      if (socket.connected) {
+        console.log("🔌 Disconnect WebSocket (leave Home)");
+        socket.disconnect();
+      }
     };
   }, [navigate]);
 
+  // ------------ UI ------------
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-[#E9FBFF]">
@@ -74,7 +83,7 @@ export default function Home() {
   return (
     <section className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
 
-      {/* SPOTLIGHT: User info */}
+      {/* User info */}
       <div className="flex flex-col items-center justify-center flex-1">
         <div className="relative w-[420px] h-[560px] flex items-center justify-center">
 
@@ -95,7 +104,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* ชื่อ + สถานะออนไลน์ */}
         <h2 className="mt-6 text-2xl font-bold text-[#00B8E6] flex items-center gap-3">
           {me?.display_name}
 
@@ -109,14 +117,15 @@ export default function Home() {
         <p className="text-gray-600 text-lg">{me?.country || "-"}</p>
       </div>
 
-      {/* เมนู */}
+      {/* Menu */}
       <div className="flex flex-1 items-center justify-center">
         <div className="grid grid-cols-2 gap-6">
           {menuItems.map((m) => (
             <button
               key={m.name}
               onClick={() => m.path && navigate(m.path)}
-              className="bg-white rounded-2xl shadow px-8 py-6 w-48 text-center hover:scale-105 transition border border-[#d0f6ff]">
+              className="bg-white rounded-2xl shadow px-8 py-6 w-48 text-center hover:scale-105 transition border border-[#d0f6ff]"
+            >
               <div className="text-4xl mb-2">{m.icon}</div>
               <div className="text-[#00B8E6] font-semibold text-base">{m.name}</div>
             </button>

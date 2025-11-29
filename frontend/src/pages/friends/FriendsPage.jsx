@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../api";
+import { useNavigate } from "react-router-dom";
 
 import Tabs from "./Tabs";
 import FriendsList from "./FriendsList";
@@ -11,6 +12,7 @@ import CategoryModal from "../../components/CategoryModal";
 import FriendDetailModal from "../../components/FriendDetailModal";
 
 export default function FriendsPage() {
+    const navigate = useNavigate();
     const [tab, setTab] = useState("friends");
 
     const [friends, setFriends] = useState([]);
@@ -200,7 +202,7 @@ export default function FriendsPage() {
                     onChat={(id) => {
                         setShowFriendModal(false);
                         setSelectedFriend(null);
-                        console.log("go chat", id);
+                        navigate(`/chat/${id}`);
                     }}
 
                     onBlockUser={async (id) => {

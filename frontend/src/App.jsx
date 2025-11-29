@@ -16,6 +16,7 @@ import ItemSelect from "./pages/profile/ItemSelect";
 import FriendsPage from "./pages/friends/FriendsPage";
 import ManageFriends from "./pages/friends/ManageFriends";
 import Notifications from "./pages/Notifications";
+import ChatRoom from "./pages/chat/ChatRoom";
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/friends/manage" element={<ManageFriends />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/chat/:friendId" element={<ChatRoom />} />
         </Route>
 
         {/* ✅ กลุ่ม Setup (ไม่มี Header) */}

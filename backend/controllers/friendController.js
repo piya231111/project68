@@ -569,6 +569,41 @@ export async function getFriendStatus(req, res) {
   }
 }
 
+// ✔ ดึงข้อมูลเพื่อนรายคนแบบเต็ม ใช้ในหน้าแชท
+export async function getFriendDetail(req, res) {
+  try {
+    const friendId = req.params.id;
+
+    const result = await pool.query(
+      `
+      SELECT 
+        u.id,
+        u.display_name,
+        u.email,
+        p.country,
+        p.interests,
+        p.avatar_id,
+        p.item_id,
+        p.is_online
+      FROM users u
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.id = $1
+      `,
+      [friendId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "ไม่พบผู้ใช้" });
+    }
+
+    res.json({ friend: result.rows[0] });
+  } catch (err) {
+    console.error("getFriendDetail error:", err);
+    res.status(500).json({ error: "โหลดข้อมูลเพื่อนล้มเหลว" });
+  }
+}
+
+
 
 
 
