@@ -4,13 +4,23 @@ export default function ChatInputBar({
   sendTextMessage,
   sendMediaMessage,
   openGifModal,
+  roomReady,   // ⭐ เพิ่มไว้เช็คว่า join ห้องเสร็จหรือยัง
 }) {
   const [text, setText] = useState("");
 
   const send = () => {
     if (!text.trim()) return;
+    if (!roomReady) return;     // ⭐ ป้องกันก่อน join ห้ามส่ง
+
     sendTextMessage(text);
     setText("");
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();        // ⭐ กัน Enter ยิงหลายรอบ
+      send();
+    }
   };
 
   return (
@@ -29,10 +39,7 @@ export default function ChatInputBar({
       </label>
 
       {/* GIF */}
-      <button
-        onClick={openGifModal}
-        className="p-3 bg-yellow-300 rounded-full"
-      >
+      <button onClick={openGifModal} className="p-3 bg-yellow-300 rounded-full">
         GIF
       </button>
 
@@ -41,7 +48,7 @@ export default function ChatInputBar({
         placeholder="พิมพ์ข้อความ..."
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && send()}
+        onKeyDown={handleKeyDown}
         className="flex-1 px-4 py-2 rounded-full"
       />
 

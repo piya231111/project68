@@ -1,6 +1,7 @@
 // backend/wsServer.js
 import { Server } from "socket.io";
 import { pool } from "./db.js";
+import { moderateText } from "./utils/textModeration.js";
 
 let onlineUsers = new Map();
 
@@ -13,7 +14,7 @@ export function setupWebSocket(server) {
   });
 
   io.on("connection", (socket) => {
-    console.log("⚡ Socket connected:", socket.id);
+    console.log("Socket connected:", socket.id);
 
     /* ===============================================================
        1) USER ONLINE
@@ -39,33 +40,41 @@ export function setupWebSocket(server) {
     socket.on("send_message", async (msgData) => {
       try {
         let { room_id, sender_id, text, type, file_url } = msgData;
-
         sender_id = String(sender_id);
 
-        // ป้องกัน error
+        // Missing important data
         if (!room_id || !sender_id) {
-          console.log("❌ Missing data →", msgData);
+          console.log("Missing room_id or sender_id →", msgData);
           return;
         }
 
-        // ถ้าเป็น TEXT แต่ empty → ไม่ส่ง
+        // Empty text
         if (type === "text" && (!text || !text.trim())) {
-          console.log("❌ Empty text ignored");
+          console.log("Empty text ignored");
           return;
         }
 
-        // ถ้าเป็น media แต่ไม่มี file_url → ไม่ส่ง
+        // No file_url for media
         if (type !== "text" && !file_url) {
-          console.log("❌ Missing media file_url →", msgData);
+          console.log("Missing media file_url →", msgData);
           return;
         }
 
-        // บันทึกลง DB
+        /* ===========================================================
+           3.1 Moderate (เฉพาะ TEXT)
+        =========================================================== */
+        if (type === "text") {
+          text = await moderateText(text);   //  moderate ใช้ที่นี่ที่เดียว
+        }
+
+        /* ===========================================================
+           3.2 Save to DB
+        =========================================================== */
         const result = await pool.query(
           `
-          INSERT INTO messages (room_id, sender_id, text, type, file_url)
-          VALUES ($1, $2, $3, $4, $5)
-          RETURNING *
+            INSERT INTO messages (room_id, sender_id, text, type, file_url)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
           `,
           [
             room_id,
@@ -78,7 +87,9 @@ export function setupWebSocket(server) {
 
         const msg = result.rows[0];
 
-        // ส่งกลับไปที่ frontend ในรูปแบบที่พร้อมใช้
+        /* ===========================================================
+           ⭐ 3.3 Emit to frontend
+        =========================================================== */
         const formatted = {
           id: msg.id,
           room_id: msg.room_id,
@@ -89,8 +100,8 @@ export function setupWebSocket(server) {
           created_at: msg.created_at,
         };
 
-        // Real-time ส่งไปทั้งห้อง
         io.to(room_id).emit("receive_message", formatted);
+        console.log("📨 Message sent to room:", room_id);
 
       } catch (err) {
         console.error("WS send_message error:", err);

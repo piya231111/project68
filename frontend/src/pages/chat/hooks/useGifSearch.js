@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { api } from "../../../api";
 import { socket } from "../../../socket";
 
 export default function useGifSearch(roomId) {
@@ -23,18 +22,13 @@ export default function useGifSearch(roomId) {
     setGifResults(data.data || []);
   };
 
-  /* ส่ง GIF */
-  const sendGif = async (gifUrl) => {
-    // socket
+  /* ส่ง GIF ผ่าน WebSocket เท่านั้น */
+  const sendGif = (gifUrl) => {
+    if (!gifUrl || !roomId) return;
+
     socket.emit("send_message", {
       room_id: roomId,
       sender_id: userId,
-      type: "gif",
-      file_url: gifUrl,
-    });
-
-    // save DB
-    await api.post(`/chat/room/${roomId}`, {
       type: "gif",
       file_url: gifUrl,
     });

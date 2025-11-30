@@ -7,66 +7,93 @@ export default function useChatMessages(friendId) {
   const userId = String(me?.id || "");
 
   const [roomId, setRoomId] = useState(null);
+  const [roomReady, setRoomReady] = useState(false);   // ⭐ ใหม่
   const [messages, setMessages] = useState([]);
 
-  /* 1) สร้างห้อง */
+  /* ============================================
+     ⭐ 0) คำหยาบ + ฟังก์ชันเซ็นเซอร์
+  ============================================ */
+  const badPatterns = [
+    /ค+[ ._]*ว+[ ._]*ย+/gi,
+    /เห+[ ._]*ี้+[ ._]*ย+/gi,
+    /ส+[ ._]*ั+[ ._]*ส+/gi,
+    /fu+ck+/gi,
+    /bit+ch+/gi,
+    /pu+ssy+/gi,
+    /k+[ ._]*u+[ ._]*y+/gi,
+  ];
+
+  const replaceBadWords = (text) => {
+    let newText = text;
+    badPatterns.forEach((p) => {
+      newText = newText.replace(p, "***");
+    });
+    return newText;
+  };
+
+  /* ============================================
+     ⭐ 1) สร้างห้องแชท
+  ============================================ */
   useEffect(() => {
     if (!friendId) return;
 
     api.post(`/chat/get-or-create-room/${friendId}`)
       .then((res) => setRoomId(res.data.room_id))
       .catch(console.error);
+
   }, [friendId]);
 
-  /* 2) join room + load messages + listener */
+  /* ============================================
+     ⭐ 2) join room + load old messages
+  ============================================ */
   useEffect(() => {
     if (!roomId) return;
 
     socket.emit("join_room", roomId);
+    setRoomReady(true);         // ⭐ แจ้งว่าห้องพร้อมแล้ว
 
-    // โหลดข้อความเก่าจาก DB
-    api.get(`/chat/room/${roomId}`)
-      .then((res) => {
-        const msgs = Array.isArray(res.data.messages) ? res.data.messages : [];
-        setMessages(msgs);
-      })
-      .catch(console.error);
+    // โหลดข้อความเก่า
+    api.get(`/chat/room/${roomId}`).then((res) => {
+      const arr = Array.isArray(res.data.messages) ? res.data.messages : [];
+      setMessages(arr);
+    });
 
-    // Listener realtime
+    // ⭐ ใช้ฟังก์ชันใหม่ที่ไม่ถือค่า roomId เก่า
     const handleReceive = (msg) => {
-      if (String(msg.room_id) === String(roomId)) {
-        setMessages((prev) => [...prev, msg]);
-      }
+      setMessages((prev) => {
+        if (String(msg.room_id) === String(roomId)) {
+          return [...prev, msg];
+        }
+        return prev;
+      });
     };
 
     socket.on("receive_message", handleReceive);
-
-    // cleanup
-    return () => {
-      socket.off("receive_message", handleReceive);
-    };
+    return () => socket.off("receive_message", handleReceive);
 
   }, [roomId]);
 
-  /* 3) ส่งข้อความ text */
-  const sendTextMessage = async (text) => {
-    if (!text.trim() || !roomId) return;
+  /* ============================================
+     ⭐ 3) ส่งข้อความแบบ text
+  ============================================ */
+  const sendTextMessage = (text) => {
+    if (!text.trim() || !roomId || !roomReady) return;
 
-    const payload = {
+    const cleaned = replaceBadWords(text);
+
+    socket.emit("send_message", {
       room_id: roomId,
       sender_id: userId,
       type: "text",
-      text,
-      created_at: new Date().toISOString(),
-    };
-
-    socket.emit("send_message", payload);
-    await api.post(`/chat/room/${roomId}`, payload);
+      text: cleaned,
+    });
   };
 
-  /* 4) ส่งไฟล์ (image / video / gif) */
+  /* ============================================
+     ⭐ 4) ส่งรูป / วิดีโอ / gif
+  ============================================ */
   const sendMediaMessage = async (file) => {
-    if (!file || !roomId) return;
+    if (!file || !roomId || !roomReady) return;
 
     const form = new FormData();
     form.append("file", file);
@@ -83,25 +110,22 @@ export default function useChatMessages(friendId) {
       if (file.type.includes("video")) type = "video";
       if (file.name.toLowerCase().endsWith(".gif")) type = "gif";
 
-      const payload = {
+      socket.emit("send_message", {
         room_id: roomId,
         sender_id: userId,
         type,
         file_url,
-        created_at: new Date().toISOString(),
-      };
-
-      socket.emit("send_message", payload);
-      await api.post(`/chat/room/${roomId}`, payload);
+      });
 
     } catch (err) {
-      console.error("sendMediaMessage error:", err);
+      console.error("media error:", err);
     }
   };
 
   return {
     roomId,
     messages,
+    roomReady,          // ⭐ ส่งให้ ChatInputBar
     sendTextMessage,
     sendMediaMessage,
   };
