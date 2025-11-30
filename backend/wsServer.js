@@ -15,55 +15,91 @@ export function setupWebSocket(server) {
   io.on("connection", (socket) => {
     console.log("⚡ Socket connected:", socket.id);
 
-    /* ============================================================
-       1) USER ONLINE → ทำเครื่องหมายว่า user ออนไลน์
-    ============================================================ */
+    /* ===============================================================
+       1) USER ONLINE
+    ============================================================== */
     socket.on("online", (userId) => {
-      onlineUsers.set(userId, socket.id);
+      if (!userId) return;
+      onlineUsers.set(String(userId), socket.id);
       console.log("🟢 Online:", userId);
     });
 
-    /* ============================================================
+    /* ===============================================================
        2) JOIN ROOM
-       frontend จะส่ง room_id ทันทีที่โหลดหน้าแชท
-    ============================================================ */
+    ============================================================== */
     socket.on("join_room", (roomId) => {
+      if (!roomId) return;
       socket.join(roomId);
-      console.log(`📌 Socket ${socket.id} joined room ${roomId}`);
+      console.log(`📌 ${socket.id} joined room ${roomId}`);
     });
 
-    /* ============================================================
-       3) REAL-TIME MESSAGE
-       ใช้ room-based broadcasting
-       (ไม่ต้องใช้ receiver_id แล้ว)
-    ============================================================ */
-    socket.on("send_message", async ({ room_id, sender_id, text }) => {
+    /* ===============================================================
+       3) SEND MESSAGE (TEXT / IMAGE / VIDEO / GIF)
+    ============================================================== */
+    socket.on("send_message", async (msgData) => {
       try {
-        if (!room_id || !text) return;
+        let { room_id, sender_id, text, type, file_url } = msgData;
 
-        // บันทึกข้อความลง DB
-        const msg = await pool.query(
+        sender_id = String(sender_id);
+
+        // ป้องกัน error
+        if (!room_id || !sender_id) {
+          console.log("❌ Missing data →", msgData);
+          return;
+        }
+
+        // ถ้าเป็น TEXT แต่ empty → ไม่ส่ง
+        if (type === "text" && (!text || !text.trim())) {
+          console.log("❌ Empty text ignored");
+          return;
+        }
+
+        // ถ้าเป็น media แต่ไม่มี file_url → ไม่ส่ง
+        if (type !== "text" && !file_url) {
+          console.log("❌ Missing media file_url →", msgData);
+          return;
+        }
+
+        // บันทึกลง DB
+        const result = await pool.query(
           `
-          INSERT INTO messages (room_id, sender_id, text)
-          VALUES ($1, $2, $3)
+          INSERT INTO messages (room_id, sender_id, text, type, file_url)
+          VALUES ($1, $2, $3, $4, $5)
           RETURNING *
           `,
-          [room_id, sender_id, text]
+          [
+            room_id,
+            sender_id,
+            text || null,
+            type || "text",
+            file_url || null,
+          ]
         );
 
-        const savedMessage = msg.rows[0];
+        const msg = result.rows[0];
 
-        // ส่งให้ทุกคนในห้องนี้
-        io.to(room_id).emit("receive_message", savedMessage);
+        // ส่งกลับไปที่ frontend ในรูปแบบที่พร้อมใช้
+        const formatted = {
+          id: msg.id,
+          room_id: msg.room_id,
+          sender_id: msg.sender_id,
+          text: msg.text,
+          type: msg.type,
+          file_url: msg.file_url,
+          created_at: msg.created_at,
+        };
+
+        // Real-time ส่งไปทั้งห้อง
+        io.to(room_id).emit("receive_message", formatted);
 
       } catch (err) {
-        console.error("send_message error:", err);
+        console.error("WS send_message error:", err);
       }
     });
 
-    /* ============================================================
-       4) USER DISCONNECT
-    ============================================================ */
+    /* ===============================================================
+       4) DISCONNECT
+    ============================================================== */
     socket.on("disconnect", () => {
       for (const [uid, sid] of onlineUsers.entries()) {
         if (sid === socket.id) {

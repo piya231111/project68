@@ -33,6 +33,8 @@ function App() {
 
         <Route path="/lobby" element={<Lobby />} />
 
+        <Route path="/chat/:friendId" element={<ChatRoom />} />
+
         {/* ✅ กลุ่ม “หลัง login” มี Header */}
         <Route element={<Layout />}>
           <Route path="/home" element={<Home />} />
@@ -43,7 +45,6 @@ function App() {
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/friends/manage" element={<ManageFriends />} />
           <Route path="/notifications" element={<Notifications />} />
-          <Route path="/chat/:friendId" element={<ChatRoom />} />
         </Route>
 
         {/* ✅ กลุ่ม Setup (ไม่มี Header) */}

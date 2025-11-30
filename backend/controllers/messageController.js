@@ -22,10 +22,12 @@ export async function getMessages(req, res) {
     if (checkRoom.rowCount === 0)
       return res.status(403).json({ error: "คุณไม่มีสิทธิเข้าห้องนี้" });
 
-    // โหลดข้อความ
-    const messages = await pool.query(
+    // โหลดข้อความเสมอให้เป็น array 100%
+    const result = await pool.query(
       `
-      SELECT m.*, u.display_name AS sender_name
+      SELECT 
+        m.*, 
+        u.display_name AS sender_name
       FROM messages m
       LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.room_id = $1
@@ -34,27 +36,40 @@ export async function getMessages(req, res) {
       [roomId]
     );
 
-    return res.json({ messages: messages.rows });
+    return res.json({
+      room_id: roomId,
+      messages: Array.isArray(result.rows) ? result.rows : []
+    });
 
   } catch (err) {
     console.error("getMessages error:", err);
-    res.status(500).json({ error: "เกิดข้อผิดพลาดในการโหลดข้อความ" });
+    res.status(500).json({ error: "โหลดข้อความล้มเหลว" });
   }
 }
 
 /* ---------------------------------------------------
-   2) ส่งข้อความ
+   2) ส่งข้อความ (text / image / video / gif)
 ---------------------------------------------------- */
 export async function sendMessage(req, res) {
   try {
     const userId = req.user.id;
     const roomId = req.params.roomId;
-    const { text } = req.body;
 
-    if (!text?.trim())
-      return res.status(400).json({ error: "ข้อความต้องไม่ว่าง" });
+    const { text, type, file_url } = req.body;
 
-    // ตรวจสิทธิ์ก่อนส่ง
+    // ประเภทข้อมูลที่ backend รองรับ
+    const validTypes = ["text", "image", "video", "gif"];
+    const msgType = validTypes.includes(type) ? type : "text";
+
+    if (msgType === "text" && !text?.trim()) {
+      return res.status(400).json({ error: "ข้อความว่าง" });
+    }
+
+    if (msgType !== "text" && !file_url) {
+      return res.status(400).json({ error: "ไฟล์ไม่มี URL" });
+    }
+
+    // ตรวจสิทธิ์
     const checkRoom = await pool.query(
       `
       SELECT * FROM chat_rooms
@@ -65,22 +80,37 @@ export async function sendMessage(req, res) {
     );
 
     if (checkRoom.rowCount === 0)
-      return res.status(403).json({ error: "คุณไม่มีสิทธิเข้าห้องนี้" });
+      return res.status(403).json({ error: "ไม่มีสิทธิ์ในห้องนี้" });
 
-    // บันทึกข้อความ
+    // บันทึกลง DB
     const saved = await pool.query(
       `
-      INSERT INTO messages (room_id, sender_id, text)
-      VALUES ($1, $2, $3)
+      INSERT INTO messages (room_id, sender_id, text, type, file_url)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
       `,
-      [roomId, userId, text]
+      [
+        roomId,
+        userId,
+        text || null,
+        msgType,
+        file_url || null,
+      ]
     );
 
-    return res.json({ message: saved.rows[0] });
+    // 🔥 ส่งกลับแบบเดียวกับ socket.emit เสมอ — React ชอบมาก
+    return res.json({
+      room_id: roomId,
+      sender_id: userId,
+      type: msgType,
+      text: text || null,
+      file_url: file_url || null,
+      created_at: saved.rows[0].created_at,
+      id: saved.rows[0].id
+    });
 
   } catch (err) {
     console.error("sendMessage error:", err);
-    res.status(500).json({ error: "เกิดข้อผิดพลาดในการส่งข้อความ" });
+    res.status(500).json({ error: "ส่งข้อความล้มเหลว" });
   }
 }

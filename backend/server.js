@@ -19,9 +19,8 @@ import avatarRoutes from "./routes/avatarRoutes.js";
 import itemsRoutes from "./routes/itemsRoutes.js";
 import friendRoutes from "./routes/friendRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
-
-// ⭐ New Chat Routes
 import chatRoutes from "./routes/chatRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -44,16 +43,14 @@ app.get("/", async (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/rooms", roomRoutes);
-// ❌ REMOVE: app.use("/api/messages", messageRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/avatars", avatarRoutes);
 app.use("/api/items", itemsRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api", notificationRoutes);
-
-// ⭐ Chat routes
 app.use("/api/chat", chatRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // SOCKET.IO SERVER
 const server = http.createServer(app);
@@ -73,19 +70,43 @@ io.on("connection", (socket) => {
     socket.join(roomId);
   });
 
-  // Send message
-  socket.on("send_message", async ({ room_id, sender_id, text }) => {
+  // รับข้อความแบบ real-time
+  socket.on("send_message", async (data) => {
     try {
-      if (!room_id || !text) return;
+      let { room_id, sender_id, text, type, file_url } = data;
+      sender_id = String(sender_id);
 
-      const msg = await pool.query(
-        `INSERT INTO messages (room_id, sender_id, text)
-         VALUES ($1, $2, $3)
-         RETURNING *`,
-        [room_id, sender_id, text]
+      if (!room_id || !sender_id) return;
+
+      const result = await pool.query(
+        `
+      INSERT INTO messages (room_id, sender_id, text, type, file_url)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+      `,
+        [
+          room_id,
+          sender_id,
+          text || null,
+          type || "text",
+          file_url || null,
+        ]
       );
 
-      io.to(room_id).emit("receive_message", msg.rows[0]);
+      const msg = result.rows[0];
+
+      // ⭐ Format ให้เหมือน REST API
+      const formatted = {
+        id: msg.id,
+        room_id: msg.room_id,
+        sender_id: msg.sender_id,
+        text: msg.text,
+        type: msg.type,
+        file_url: msg.file_url,
+        created_at: msg.created_at,
+      };
+
+      io.to(room_id).emit("receive_message", formatted);
 
     } catch (err) {
       console.error("WS send_message error:", err);

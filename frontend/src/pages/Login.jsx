@@ -36,6 +36,9 @@ export default function Login() {
       const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
 
+      localStorage.setItem("userId", me.id);
+      localStorage.setItem("user", JSON.stringify(me));
+
       // 🔹 เช็คว่า setup ครบไหม
       if (me?.country && me?.avatar_id && me?.item_id && me?.interests?.length > 0) {
         navigate("/home", { replace: true });
@@ -72,6 +75,9 @@ export default function Login() {
 
       const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
+
+      localStorage.setItem("userId", me.id);
+      localStorage.setItem("user", JSON.stringify(me));
 
       if (me?.country && me?.avatar_id && me?.item_id && me?.interests?.length > 0) {
         navigate("/home", { replace: true });
