@@ -16,12 +16,12 @@ export default function ChatRoom() {
     isOnline,
   } = useFriendData();
 
-  // ⭐ ป้องกัน Hook run เวลา friendId ยังไม่รู้ → React crash
   if (!friendId) return <div className="p-10">Loading...</div>;
 
   const {
     roomId,
     messages,
+    roomReady,      // ⭐ เพิ่มตรงนี้
     sendTextMessage,
     sendMediaMessage,
   } = useChatMessages(friendId);
@@ -52,6 +52,7 @@ export default function ChatRoom() {
         sendTextMessage={sendTextMessage}
         sendMediaMessage={sendMediaMessage}
         openGifModal={() => setGifModalOpen(true)}
+        roomReady={roomReady}    // ⭐ ตอนนี้จะไม่ error แล้ว
       />
 
       {gifModalOpen && (

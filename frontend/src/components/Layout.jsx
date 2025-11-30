@@ -6,12 +6,15 @@ import { socket } from "../socket";
 export default function Layout() {
     const navigate = useNavigate();
     const [menuOpen, setMenuOpen] = useState(false);
-    const [settingsOpen, setSettingsOpen] = useState(false);   // ป็อปอัปการตั้งค่า
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [me, setMe] = useState(null);
     const [loading, setLoading] = useState(true);
 
     const [notificationCount, setNotificationCount] = useState(0);
 
+    /* ======================================================
+       1) โหลดข้อมูล user ครั้งแรก
+    ====================================================== */
     useEffect(() => {
         (async () => {
             try {
@@ -25,24 +28,30 @@ export default function Layout() {
         })();
     }, [navigate]);
 
+    /* ======================================================
+       2) Connect Socket.IO แค่ครั้งเดียวตอน Layout สร้าง
+    ====================================================== */
+    useEffect(() => {
+        if (!socket.connected) {
+            socket.connect();  // ⭐ connect แค่ครั้งเดียว
+        }
+
+        return () => {
+            // ❗ ห้าม disconnect ที่นี่เด็ดขาด
+        };
+    }, []);
+
+    /* ======================================================
+       3) เมื่อ me โหลดเสร็จ → แจ้งว่า user ออนไลน์
+    ====================================================== */
     useEffect(() => {
         if (!me) return;
-
-        // ⭐ connect websocket
-        socket.connect();
-
-        // แจ้ง server ว่า user นี้ออนไลน์แล้ว
         socket.emit("online", me.id);
-
-        console.log("🟢 Socket connected as:", me.id);
-
-        // cleanup เมื่อเปลี่ยนหน้า / logout
-        return () => {
-            socket.disconnect();
-            console.log("🔴 Socket disconnected");
-        };
     }, [me]);
 
+    /* ======================================================
+       4) โหลดตัวนับแจ้งเตือน
+    ====================================================== */
     useEffect(() => {
         const loadCount = async () => {
             try {
@@ -53,22 +62,31 @@ export default function Layout() {
             }
         };
 
-        loadCount(); // ดึงครั้งแรก
-        const interval = setInterval(loadCount, 5000); // ดึงซ้ำทุก 5 วิ
+        loadCount();
+        const interval = setInterval(loadCount, 5000);
 
         return () => clearInterval(interval);
     }, []);
 
+    /* ======================================================
+       5) Logout → Disconnect socket ที่นี่เท่านั้น
+    ====================================================== */
     const logout = async () => {
         try {
             await api.post("/auth/logout");
         } catch (err) {
             console.error("logout error:", err);
         }
+
+        socket.disconnect();  // ⭐ ถูกต้อง
+
         localStorage.removeItem("token");
         navigate("/login", { replace: true });
     };
 
+    /* ======================================================
+       Loading UI
+    ====================================================== */
     if (loading) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-[#E9FBFF]">
@@ -77,8 +95,12 @@ export default function Layout() {
         );
     }
 
+    /* ======================================================
+       UI Layout
+    ====================================================== */
     return (
         <main className="min-h-screen w-full overflow-x-hidden bg-[#E9FBFF]">
+
             {/* Header */}
             <header className="w-full bg-white/90 shadow-sm backdrop-blur-sm py-4 px-8 flex justify-between items-center relative z-[1000]">
                 <h1
@@ -90,19 +112,18 @@ export default function Layout() {
 
                 <div className="flex items-center gap-3 relative">
 
-                    {/* 🔔 Notification Button ———— เพิ่มตรงนี้ */}
+                    {/* Notification Button */}
                     <button
                         onClick={() => navigate("/notifications")}
                         className="relative p-2 rounded-full hover:bg-gray-100 transition"
                         title="แจ้งเตือน"
                     >
-                        {/* ไอคอนกระดิ่งมินิมอล */}
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
                             viewBox="0 0 24 24"
                             strokeWidth={1.8}
-                            stroke="#555"    // สีมินิมอล
+                            stroke="#555"
                             className="w-6 h-6"
                         >
                             <path
@@ -112,22 +133,18 @@ export default function Layout() {
                             />
                         </svg>
 
-                        {/* Badge แสดงจำนวนแจ้งเตือน */}
                         {notificationCount > 0 && (
-                            <span
-                                className="
+                            <span className="
                                 absolute -top-1 -right-1 
                                 bg-red-500 text-white 
-                                text-xs px-1.5 py-0.5 
-                                rounded-full
-                                "
-                            >
+                                text-xs px-1.5 py-0.5
+                                rounded-full">
                                 {notificationCount}
                             </span>
                         )}
                     </button>
 
-                    {/* ชื่อผู้ใช้ */}
+                    {/* Username */}
                     <p
                         onClick={() => navigate("/profile")}
                         className="text-gray-700 font-medium cursor-pointer hover:text-[#00B8E6]"
@@ -135,7 +152,7 @@ export default function Layout() {
                         {me?.display_name || me?.email}
                     </p>
 
-                    {/* ปุ่มเมนู ⋮ */}
+                    {/* Menu Button */}
                     <button
                         onClick={() => setMenuOpen(!menuOpen)}
                         className="p-2 rounded-full hover:bg-gray-100"
@@ -155,7 +172,6 @@ export default function Layout() {
                                 โปรไฟล์
                             </button>
 
-                            {/* เมนูการตั้งค่า */}
                             <button
                                 onClick={() => {
                                     setMenuOpen(false);
@@ -181,7 +197,7 @@ export default function Layout() {
                 <Outlet />
             </div>
 
-            {/* Modal การตั้งค่า */}
+            {/* Settings Modal */}
             {settingsOpen && (
                 <div
                     className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[2000]"

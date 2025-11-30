@@ -1,95 +1,65 @@
 // backend/wsServer.js
 import { Server } from "socket.io";
 import { pool } from "./db.js";
-import { moderateText } from "./utils/textModeration.js";
+import { filterBadWords } from "./utils/textModerationRegex.js"; 
+import { aiModerate } from "./utils/textModerationAI.js";
 
 let onlineUsers = new Map();
 
 export function setupWebSocket(server) {
   const io = new Server(server, {
-    cors: {
-      origin: "http://localhost:5173",
-      credentials: true,
-    },
+    cors: { origin: "http://localhost:5173", credentials: true },
   });
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
 
-    /* ===============================================================
-       1) USER ONLINE
-    ============================================================== */
+    /* =============================
+       USER ONLINE
+    ============================== */
     socket.on("online", (userId) => {
-      if (!userId) return;
-      onlineUsers.set(String(userId), socket.id);
-      console.log("🟢 Online:", userId);
+      if (userId) onlineUsers.set(String(userId), socket.id);
     });
 
-    /* ===============================================================
-       2) JOIN ROOM
-    ============================================================== */
+    /* =============================
+       JOIN ROOM
+    ============================== */
     socket.on("join_room", (roomId) => {
       if (!roomId) return;
       socket.join(roomId);
-      console.log(`📌 ${socket.id} joined room ${roomId}`);
+      io.to(socket.id).emit("room_joined", roomId);
     });
 
-    /* ===============================================================
-       3) SEND MESSAGE (TEXT / IMAGE / VIDEO / GIF)
-    ============================================================== */
-    socket.on("send_message", async (msgData) => {
+    /* =============================
+       SEND MESSAGE
+    ============================== */
+    socket.on("send_message", async (msgData, callback) => {
       try {
         let { room_id, sender_id, text, type, file_url } = msgData;
-        sender_id = String(sender_id);
 
-        // Missing important data
-        if (!room_id || !sender_id) {
-          console.log("Missing room_id or sender_id →", msgData);
-          return;
-        }
+        const safeCallback = (res) => {
+          if (typeof callback === "function") callback(res);
+        };
 
-        // Empty text
-        if (type === "text" && (!text || !text.trim())) {
-          console.log("Empty text ignored");
-          return;
-        }
+        if (!room_id || !sender_id) return safeCallback({ ok: false });
 
-        // No file_url for media
-        if (type !== "text" && !file_url) {
-          console.log("Missing media file_url →", msgData);
-          return;
-        }
-
-        /* ===========================================================
-           3.1 Moderate (เฉพาะ TEXT)
-        =========================================================== */
+        // 1) text → filter เบื้องต้นแบบเร็วมาก (regex)
         if (type === "text") {
-          text = await moderateText(text);   //  moderate ใช้ที่นี่ที่เดียว
+          text = filterBadWords(text);
         }
 
-        /* ===========================================================
-           3.2 Save to DB
-        =========================================================== */
+        // 2) บันทึกข้อความทันที (ไม่รอ AI)
         const result = await pool.query(
           `
             INSERT INTO messages (room_id, sender_id, text, type, file_url)
-            VALUES ($1, $2, $3, $4, $5)
+            VALUES ($1,$2,$3,$4,$5)
             RETURNING *
           `,
-          [
-            room_id,
-            sender_id,
-            text || null,
-            type || "text",
-            file_url || null,
-          ]
+          [room_id, sender_id, text || null, type, file_url || null]
         );
 
         const msg = result.rows[0];
 
-        /* ===========================================================
-           ⭐ 3.3 Emit to frontend
-        =========================================================== */
         const formatted = {
           id: msg.id,
           room_id: msg.room_id,
@@ -100,22 +70,41 @@ export function setupWebSocket(server) {
           created_at: msg.created_at,
         };
 
+        // ส่งออกทันทีที่บันทึกเสร็จ — ลื่นมาก
         io.to(room_id).emit("receive_message", formatted);
-        console.log("📨 Message sent to room:", room_id);
+        safeCallback({ ok: true });
+
+        // 3) ทำ AI Moderation "ทีหลัง" แบบไม่ block UI
+        setTimeout(async () => {
+          const clean = await aiModerate(text);
+          if (!clean || clean === text) return;
+
+          // update DB
+          await pool.query(
+            `UPDATE messages SET text=$1 WHERE id=$2`,
+            [clean, msg.id]
+          );
+
+          // notify หน้าเว็บให้เปลี่ยนข้อความ
+          io.to(room_id).emit("message_updated", {
+            id: msg.id,
+            text: clean,
+          });
+        }, 50);
 
       } catch (err) {
-        console.error("WS send_message error:", err);
+        console.error("send_message ERR:", err);
+        if (typeof callback === "function") callback({ ok: false });
       }
     });
 
-    /* ===============================================================
-       4) DISCONNECT
-    ============================================================== */
+    /* =============================
+       DISCONNECT
+    ============================== */
     socket.on("disconnect", () => {
       for (const [uid, sid] of onlineUsers.entries()) {
         if (sid === socket.id) {
           onlineUsers.delete(uid);
-          console.log("🔴 Offline:", uid);
         }
       }
     });

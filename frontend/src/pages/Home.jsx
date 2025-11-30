@@ -38,13 +38,6 @@ export default function Home() {
           });
         }
 
-        // ⭐⭐⭐ CONNECT SOCKET.IO หลังจากโหลด user สำเร็จ ⭐⭐⭐
-        if (user) {
-          console.log("🔌 Connecting WebSocket...");
-          socket.connect();                 // เชื่อม socket
-          socket.emit("online", user.id);   // แจ้ง backend ว่า user ออนไลน์
-        }
-
       } catch (err) {
         console.error("โหลดข้อมูลไม่สำเร็จ:", err);
         navigate("/login", { replace: true });
@@ -55,12 +48,7 @@ export default function Home() {
 
     return () => {
       isMounted = false;
-
-      // ⭐⭐⭐ Disconnect WebSocket เมื่อออกจาก Home ⭐⭐⭐
-      if (socket.connected) {
-        console.log("🔌 Disconnect WebSocket (leave Home)");
-        socket.disconnect();
-      }
+      // ❌ ห้าม disconnect socket ที่นี่
     };
   }, [navigate]);
 
