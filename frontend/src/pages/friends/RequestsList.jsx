@@ -10,21 +10,25 @@ export default function RequestsList({
     return <p className="text-gray-500 text-center">ยังไม่มีคำขอ</p>;
 
   return (
-    <ul className="divide-y bg-white/70 rounded-xl">
-      {requests.map((r) => (
-        <FriendRow
-          key={r.id}
-          friend={r}
-          isIncomingRequest={true}
-          onClick={() => onOpenDetail({
-            ...r,
-            isFriend: false,
-            isIncomingRequest: true,   // ส่งให้ modal รู้ว่าเป็นคำขอเข้ามา
-          })}
-          onAcceptRequest={onAccept}
-          onDeclineRequest={onDecline}
-        />
-      ))}
-    </ul>
+    <div className="max-h-[480px] overflow-y-auto pr-2">
+      <ul className="divide-y bg-white/70 rounded-xl">
+        {requests.map((r) => (
+          <FriendRow
+            key={r.id}
+            friend={r}
+            isIncomingRequest={true}
+            onClick={() =>
+              onOpenDetail({
+                ...r,
+                isFriend: false,
+                isIncomingRequest: true,
+              })
+            }
+            onAcceptRequest={onAccept}
+            onDeclineRequest={onDecline}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }

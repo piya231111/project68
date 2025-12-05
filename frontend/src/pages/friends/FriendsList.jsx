@@ -14,47 +14,50 @@ export default function FriendsList({
 
   return (
     <>
-      {/* Favorite */}
-      <h3 className="text-xl text-yellow-500 font-semibold mb-3">
-        ⭐ เพื่อนที่ปักดาว ({fav.length})
-      </h3>
+      <div className="max-h-[500px] overflow-y-auto pr-2">
 
-      <ul className="mb-8 divide-y bg-white/70 rounded-xl">
-        {fav.map((f) => (
-          <FriendRow
-            key={f.id}
-            friend={f}
-            isFriend={true}
-            isFavorite={true}
-            isOnline={f.is_online}   // ⭐ ส่งต่อสถานะออนไลน์
-            onClick={() => onOpenDetail(f)}
-            onToggleFavorite={onToggleFavorite}
-            onRemoveFriend={onRemoveFriend}
-          />
-        ))}
-      </ul>
+        {/* กลุ่มเพื่อนที่ปักดาว */}
+        <h3 className="text-xl text-yellow-500 font-semibold mb-3">
+          ⭐ เพื่อนที่ปักดาว ({fav.length})
+        </h3>
 
-      <hr className="my-6 border-dashed border-[#a5e8f7]" />
+        <ul className="mb-8 divide-y bg-white/70 rounded-xl">
+          {fav.map((f) => (
+            <FriendRow
+              key={f.id}
+              friend={f}
+              isFriend={true}
+              isFavorite={true}
+              isOnline={f.is_online}
+              onClick={() => onOpenDetail(f)}
+              onToggleFavorite={onToggleFavorite}
+              onRemoveFriend={onRemoveFriend}
+            />
+          ))}
+        </ul>
 
-      {/* Normal Friends */}
-      <h3 className="text-xl text-gray-700 font-semibold mb-3">
-        เพื่อนทั้งหมด ({normal.length})
-      </h3>
+        <hr className="my-6 border-dashed border-[#a5e8f7]" />
 
-      <ul className="divide-y bg-white/70 rounded-xl">
-        {normal.map((f) => (
-          <FriendRow
-            key={f.id}
-            friend={f}
-            isFriend={true}
-            isFavorite={false}
-            isOnline={f.is_online}    // ⭐ ส่งต่อสถานะออนไลน์เช่นกัน
-            onClick={() => onOpenDetail(f)}
-            onToggleFavorite={onToggleFavorite}
-            onRemoveFriend={onRemoveFriend}
-          />
-        ))}
-      </ul>
+        {/* กลุ่มเพื่อนทั้งหมด */}
+        <h3 className="text-xl text-gray-700 font-semibold mb-3">
+          เพื่อนทั้งหมด ({normal.length})
+        </h3>
+
+        <ul className="divide-y bg-white/70 rounded-xl">
+          {normal.map((f) => (
+            <FriendRow
+              key={f.id}
+              friend={f}
+              isFriend={true}
+              isFavorite={false}
+              isOnline={f.is_online}
+              onClick={() => onOpenDetail(f)}
+              onToggleFavorite={onToggleFavorite}
+              onRemoveFriend={onRemoveFriend}
+            />
+          ))}
+        </ul>
+      </div>
     </>
   );
 }

@@ -57,3 +57,37 @@ export async function markNotificationRead(req, res) {
         res.status(500).json({ error: "อัปเดตสถานะแจ้งเตือนไม่สำเร็จ" });
     }
 }
+
+export async function deleteNotification(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await pool.query(
+      `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("deleteNotification error:", err);
+    res.status(500).json({ error: "ลบแจ้งเตือนไม่สำเร็จ" });
+  }
+}
+
+export async function clearNotifications(req, res) {
+  try {
+    const userId = req.user.id;
+
+    await pool.query(
+      `DELETE FROM notifications WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("clearNotifications error:", err);
+    res.status(500).json({ error: "ลบแจ้งเตือนทั้งหมดไม่สำเร็จ" });
+  }
+}
+

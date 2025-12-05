@@ -17,61 +17,60 @@ export default function useChatMessages(friendId) {
     useEffect(() => {
         if (!friendId) return;
 
-        api
-            .post(`/chat/get-or-create-room/${friendId}`)
-            .then((res) => setRoomId(res.data.room_id))
+        api.post(`/chat/get-or-create-room/${friendId}`)
+            .then(res => setRoomId(res.data.room_id))
             .catch(console.error);
     }, [friendId]);
 
     /* ============================================
-       2) JOIN ROOM + LOAD HISTORY
+       2) JOIN ROOM (ใหม่!!) + load history
     ============================================ */
     useEffect(() => {
         if (!roomId) return;
 
         setRoomReady(false);
-        socket.emit("join_room", roomId);
 
-        // Backend บอกว่า join สำเร็จ
-        const handleJoinConfirm = (joinedRoomId) => {
-            if (String(joinedRoomId) === String(roomId)) {
-                setRoomReady(true);
-            }
-        };
-        socket.on("room_joined", handleJoinConfirm);
-
-        // โหลดข้อความเก่า
-        api.get(`/chat/room/${roomId}`).then((res) => {
-            const arr = Array.isArray(res.data.messages) ? res.data.messages : [];
-            setMessages(arr);
+        // ⭐ JOIN ROOM แบบใหม่ ต้องส่ง object
+        socket.emit("join_room", {
+            roomId,
+            userId
         });
 
-        // ⭐ รับข้อความใหม่
+        socket.on("room_joined", (joinedId) => {
+            if (String(joinedId) === String(roomId)) {
+                setRoomReady(true);
+            }
+        });
+
+        // โหลดประวัติแชท
+        api.get(`/chat/room/${roomId}`).then((res) => {
+            setMessages(Array.isArray(res.data.messages) ? res.data.messages : []);
+        });
+
+        // ข้อความใหม่
         const handleReceive = (msg) => {
             if (String(msg.room_id) !== String(roomId)) return;
-            setMessages((prev) => [...prev, msg]);
+            setMessages(prev => [...prev, msg]);
         };
         socket.on("receive_message", handleReceive);
 
-        // ⭐⭐ รับการอัปเดตข้อความหลัง AI moderation
+        // ข้อความถูกแก้โดย AI
         const handleUpdate = (update) => {
-            setMessages((prev) =>
-                prev.map((m) =>
-                    m.id === update.id ? { ...m, text: update.text } : m
-                )
+            setMessages(prev =>
+                prev.map(m => m.id === update.id ? { ...m, text: update.text } : m)
             );
         };
         socket.on("message_updated", handleUpdate);
 
         return () => {
-            socket.off("room_joined", handleJoinConfirm);
+            socket.off("room_joined");
             socket.off("receive_message", handleReceive);
-            socket.off("message_updated", handleUpdate);   // ⭐ cleanup
+            socket.off("message_updated", handleUpdate);
         };
     }, [roomId]);
 
     /* ============================================
-       3) ส่งข้อความ TEXT แบบเร็ว ไม่อั้น
+       3) ส่งข้อความ text
     ============================================ */
     const sendTextMessage = (text) => {
         if (!text.trim() || !roomId || !roomReady) return;
@@ -83,12 +82,6 @@ export default function useChatMessages(friendId) {
                 sender_id: userId,
                 type: "text",
                 text,
-            },
-            (res) => {
-                // backend จะใส่ msg มาให้ถ้าบันทึกสำเร็จ
-                if (res?.ok && res.msg) {
-                    setMessages((prev) => [...prev, res.msg]);
-                }
             }
         );
     };
@@ -119,11 +112,6 @@ export default function useChatMessages(friendId) {
                     sender_id: userId,
                     type,
                     file_url: upload.data.url,
-                },
-                (res) => {
-                    if (res?.ok && res.msg) {
-                        setMessages((prev) => [...prev, res.msg]);
-                    }
                 }
             );
         } catch (err) {

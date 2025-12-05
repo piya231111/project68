@@ -16,6 +16,7 @@ export default function FriendRow({
   onSendRequest,
 }) {
   const [openMenu, setOpenMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
   const [avatar, setAvatar] = useState(null);
   const [item, setItem] = useState(null);
@@ -43,7 +44,7 @@ export default function FriendRow({
     // 🔥 โหลดสถานะออนไลน์ real-time
     api.get(`/friends/${friend.id}/status`)
       .then((res) => setIsOnline(res.data.is_online))
-      .catch(() => {});
+      .catch(() => { });
 
   }, [friend]);
 
@@ -53,7 +54,7 @@ export default function FriendRow({
       onClick={onClick}
     >
       <div className="flex items-center flex-1 gap-3">
-        
+
         {/* Avatar + Item */}
         <div className="relative w-14 h-14">
           {item && (
@@ -141,7 +142,17 @@ export default function FriendRow({
         {isFriend && (
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={() => setOpenMenu(!openMenu)}
+              onClick={(e) => {
+                e.stopPropagation();
+                const rect = e.target.getBoundingClientRect();
+
+                setMenuPos({
+                  x: rect.left - 120,
+                  y: rect.bottom + 5,
+                });
+
+                setOpenMenu(!openMenu);
+              }}
               className="p-2 rounded-full hover:bg-gray-100"
             >
               ⋮
@@ -151,6 +162,7 @@ export default function FriendRow({
               <FriendMenu
                 friend={friend}
                 isFavorite={isFavorite}
+                menuPos={menuPos}
                 onToggleFavorite={onToggleFavorite}
                 onRemoveFriend={onRemoveFriend}
                 onClose={() => setOpenMenu(false)}

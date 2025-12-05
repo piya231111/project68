@@ -114,10 +114,7 @@ export default function FriendsPage() {
                     <FriendsList
                         friends={uniqueFriends}
                         onOpenDetail={(f) => {
-                            setSelectedFriend({
-                                ...f,
-                                isFriend: true,   // เป็นเพื่อนแล้ว
-                            });
+                            setSelectedFriend({ ...f, isFriend: true });
                             setShowFriendModal(true);
                         }}
                         onToggleFavorite={toggleFavorite}
@@ -177,6 +174,18 @@ export default function FriendsPage() {
                 <FriendDetailModal
                     friend={selectedFriend}
                     onClose={() => {
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                    }}
+
+                    onAcceptRequest={(id) => {
+                        acceptRequest(id);
+                        setShowFriendModal(false);
+                        setSelectedFriend(null);
+                    }}
+
+                    onDeclineRequest={(id) => {
+                        declineRequest(id);
                         setShowFriendModal(false);
                         setSelectedFriend(null);
                     }}

@@ -11,6 +11,8 @@ export default function FriendDetailModal({
   onToggleFavorite,
   onBlockUser,
   onChat,
+  onAcceptRequest,
+  onDeclineRequest,
 }) {
   if (!friend) return null;
 
@@ -137,7 +139,7 @@ export default function FriendDetailModal({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAddFriend(friend.id);
+                  onAcceptRequest(friend.id);
                 }}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
@@ -147,7 +149,7 @@ export default function FriendDetailModal({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onRemoveFriend(friend.id);
+                  onDeclineRequest(friend.id);
                 }}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >

@@ -1,12 +1,19 @@
 export default function FriendMenu({
   friend,
   isFavorite,
+  menuPos,              // ← ต้องรับตำแหน่ง
   onToggleFavorite,
   onRemoveFriend,
   onClose,
 }) {
   return (
-    <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-50 animate-fadeIn">
+    <div
+      className="fixed bg-white border border-gray-200 rounded-xl shadow-lg w-40 z-[9999] animate-fadeIn"
+      style={{
+        top: menuPos.y,    // ← ใช้ตำแหน่งที่ส่งมาจาก FriendRow
+        left: menuPos.x,
+      }}
+    >
       {/* ปักดาว / เอาดาวออก */}
       <button
         onClick={() => {
