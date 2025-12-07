@@ -12,27 +12,13 @@ let randomWaiting = [];
 let randomRooms = {};
 
 function getSimilarity(a1, a2) {
-  // ถ้าไม่ใช่ array -> แปลงเป็น array ว่าง
   if (!Array.isArray(a1)) a1 = [];
   if (!Array.isArray(a2)) a2 = [];
 
-  // normalize ให้ตัวพิมพ์เล็กหมด (กันตัวสะกดต่างกัน)
   a1 = a1.map(x => String(x).toLowerCase());
   a2 = a2.map(x => String(x).toLowerCase());
 
   return a1.filter(x => a2.includes(x)).length;
-}
-
-
-function findRandomMatch(user) {
-  return randomWaiting.find(u =>
-    u.userId !== user.userId &&                 // ไม่ใช่ตัวเอง
-    u.country === user.country &&               // ประเทศต้องตรงกัน
-    getSimilarity(u.interests, user.interests) >= 1 &&  // สนใจเหมือนกัน ≥ 1
-    !(u.friends || []).includes(user.userId) && // ไม่เป็นเพื่อนกัน (ฝั่ง A)
-    !(user.friends || []).includes(u.userId) && // ไม่เป็นเพื่อนกัน (ฝั่ง B)
-    u.isOnline === true                         // อีกฝ่ายต้องออนไลน์
-  );
 }
 
 function removeFromRandomQueue(userId) {
@@ -71,6 +57,13 @@ export function setupWebSocket(server) {
       io.to(socket.id).emit("room_joined", roomId);
     });
 
+    socket.on("randomChat:getRoomInfo", ({ roomId }) => {
+      if (!randomRooms[roomId]) return;
+      io.to(socket.id).emit("randomChat:roomInfo", {
+        users: randomRooms[roomId].users
+      });
+    });
+
     /* =============================
         NORMAL CHAT: SEND MESSAGE
     ============================== */
@@ -100,7 +93,7 @@ export function setupWebSocket(server) {
         io.to(room_id).emit("receive_message", msg);
         safeCallback({ ok: true, msg });
 
-        // แจ้งเตือนถ้าอีกฝ่ายไม่ได้เปิดห้อง
+        // แจ้งเตือนถ้าอีกฝ่ายไม่อยู่ในห้อง
         const roomData = await pool.query(
           `SELECT user1_id, user2_id FROM chat_rooms WHERE id = $1`,
           [room_id]
@@ -170,57 +163,94 @@ export function setupWebSocket(server) {
         socketId: socket.id,
       };
 
-      // 🛑 ป้องกันซ้ำด้วย socketId และ userId ทั้งคู่
+      // ป้องกันซ้ำ
       const exists = randomWaiting.find(
-        u => u.userId === userData.userId || u.socketId === socket.id
+        (u) => u.userId === userData.userId || u.socketId === socket.id
       );
-      if (exists) {
-        console.log("User already waiting, skip.");
-        return;
-      }
+      if (exists) return;
 
       randomWaiting.push(userData);
-      console.log("Queue =", randomWaiting.map(u => u.userId));
+      console.log("Queue =", randomWaiting.map((u) => u.userId));
 
-      const partner = findRandomMatch(userData);
+      // ▶ DEBUG: ดูคิวทั้งหมด
+      console.log("FULL QUEUE DATA =", randomWaiting);
 
-      if (!partner) {
+      // ==== GLOBAL PAIR FINDER ====
+      let matchedA = null;
+      let matchedB = null;
+
+      for (let i = 0; i < randomWaiting.length; i++) {
+        for (let j = i + 1; j < randomWaiting.length; j++) {
+          const a = randomWaiting[i];
+          const b = randomWaiting[j];
+
+          // บอกให้รู้ว่ากำลังเช็กใครกับใคร
+          const score = getSimilarity(a.interests, b.interests);
+          console.log(
+            `CHECK MATCH => ${a.userId} vs ${b.userId} score = ${score}`
+          );
+
+          if (a.country !== b.country) continue;
+          if (!a.isOnline || !b.isOnline) continue;
+
+          //ห้ามสุ่มเจอคนที่บล็อคเรา หรือเราบล็อคเขา
+          if ((a.blocked || []).includes(b.userId)) continue;
+          if ((b.blocked || []).includes(a.userId)) continue;
+
+          //ห้ามสุ่มเจอเพื่อนที่มีอยู่แล้ว
+          if ((a.friends || []).includes(b.userId)) continue;
+          if ((b.friends || []).includes(a.userId)) continue;
+
+          // 🟦 interests ต้องตรงกัน >= 3
+          if (score < 3) continue;
+
+
+          matchedA = a;
+          matchedB = b;
+          break;
+        }
+        if (matchedA && matchedB) break;
+      }
+
+      // ไม่เจอคู่
+      if (!matchedA || !matchedB) {
         socket.emit("randomChat:waiting");
         return;
       }
 
-      // ⭐ เพิ่มการเช็กว่ามีคนอื่น match partner ไปแล้วหรือยัง
-      if (partner.socketId === undefined) return;
+      // ==== ตรงนี้ต้องวิ่ง! ====
+      console.log("🎉 MATCH FOUND!", matchedA.userId, matchedB.userId);
 
       const roomId = "random_" + Date.now();
 
       randomRooms[roomId] = {
-        users: [userData.userId, partner.userId],
-        sockets: [socket.id, partner.socketId],
+        users: [matchedA.userId, matchedB.userId],
+        sockets: [matchedA.socketId, matchedB.socketId],
       };
 
-      removeFromRandomQueue(userData.userId);
-      removeFromRandomQueue(partner.userId);
+      // ลบออกจาก queue
+      removeFromRandomQueue(matchedA.userId);
+      removeFromRandomQueue(matchedB.userId);
 
-      socket.join(roomId);
-      io.sockets.sockets.get(partner.socketId)?.join(roomId);
+      // เข้าห้อง
+      io.sockets.sockets.get(matchedA.socketId)?.join(roomId);
+      io.sockets.sockets.get(matchedB.socketId)?.join(roomId);
 
+      console.log("RANDOM MATCH => Room:", roomId);
+
+      // ส่ง event match
       io.to(roomId).emit("randomChat:matched", {
         roomId,
         users: randomRooms[roomId].users,
       });
-
-      console.log("RANDOM MATCH => Room:", roomId);
     });
 
     /* =============================
-    RANDOM CHAT: LEAVE QUEUE
-============================= */
+        RANDOM CHAT: LEAVE QUEUE
+    ============================== */
     socket.on("randomChat:leaveQueue", () => {
-      // 1) ลบจากคิวรอ
       randomWaiting = randomWaiting.filter(u => u.socketId !== socket.id);
 
-      // 2) ถ้าบังเอิญอยู่ในห้องที่กำลังจับคู่ → ต้องแจ้งจบด้วย
       for (const roomId in randomRooms) {
         if (randomRooms[roomId].sockets.includes(socket.id)) {
           io.to(roomId).emit("randomChat:end");
@@ -231,14 +261,13 @@ export function setupWebSocket(server) {
       console.log(`User left queue → socket: ${socket.id}`);
     });
 
-
     /* =============================
         RANDOM CHAT: SEND MESSAGE
     ============================== */
     socket.on("randomChat:message", (msg) => {
       io.to(msg.roomId).emit("randomChat:message", {
         text: msg.text || null,
-        sender: msg.sender,
+        sender: String(msg.sender),
         fileUrl: msg.fileUrl || null,
         type: msg.type || "text",
         time: msg.time || Date.now(),
@@ -246,7 +275,7 @@ export function setupWebSocket(server) {
     });
 
     /* =============================
-        RANDOM CHAT: LEAVE
+        RANDOM CHAT: LEAVE ROOM
     ============================== */
     socket.on("randomChat:leave", (roomId) => {
       if (randomRooms[roomId]) {
@@ -256,18 +285,14 @@ export function setupWebSocket(server) {
     });
 
     /* =============================
-      RANDOM CHAT: REJOIN
-============================= */
+          RANDOM CHAT REJOIN
+    ============================== */
     socket.on("randomChat:rejoin", ({ roomId, userId }) => {
-      console.log("User rejoined room:", roomId);
-
       if (!randomRooms[roomId]) return;
 
       socket.join(roomId);
 
       const room = randomRooms[roomId];
-
-      // หาตำแหน่ง user ในห้อง
       const idx = room.users.indexOf(userId);
       if (idx !== -1) {
         room.sockets[idx] = socket.id;
@@ -295,19 +320,15 @@ export function setupWebSocket(server) {
           const room = randomRooms[roomId];
 
           if (room.sockets.includes(socket.id)) {
-
             const stillActive = room.sockets.some(sid =>
               io.sockets.sockets.get(sid)
             );
 
-            if (stillActive) {
-              console.log("User reconnected, room stays:", roomId);
-              continue;
+            if (!stillActive) {
+              io.to(roomId).emit("randomChat:end");
+              delete randomRooms[roomId];
+              console.log("Room closed:", roomId);
             }
-
-            io.to(roomId).emit("randomChat:end");
-            delete randomRooms[roomId];
-            console.log("Room closed:", roomId);
           }
         }
       }, 5000);

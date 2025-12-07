@@ -546,26 +546,90 @@ export async function unblockUser(req, res) {
   }
 }
 
-// ดึงสถานะออนไลน์ของเพื่อนแบบ Real-time
+// ดึงสถานะความสัมพันธ์ + ออนไลน์ ของเพื่อน
 export async function getFriendStatus(req, res) {
   try {
-    const friendId = req.params.id;
+    const me = req.user.id;       // คนที่ล็อกอิน
+    const target = req.params.id; // ผู้ใช้อีกฝั่ง
 
-    const result = await pool.query(
-      `SELECT is_online 
-       FROM profiles 
-       WHERE user_id = $1`,
-      [friendId]
+    // ================================
+    // 1) โหลดสถานะออนไลน์
+    // ================================
+    const onlineRes = await pool.query(
+      `SELECT is_online FROM profiles WHERE user_id = $1`,
+      [target]
+    );
+    const is_online = onlineRes.rows[0]?.is_online ?? false;
+
+    // ================================
+    // 2) ตรวจว่าเป็นเพื่อนกันหรือยัง
+    // ================================
+    const fr = await pool.query(
+      `
+      SELECT is_favorite FROM friends
+      WHERE ((requester_id=$1 AND receiver_id=$2)
+          OR (requester_id=$2 AND receiver_id=$1))
+        AND status='accepted'
+      `,
+      [me, target]
     );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "ไม่พบผู้ใช้" });
-    }
+    const isFriend = fr.rowCount > 0;
+    const is_favorite = fr.rows[0]?.is_favorite || false;
 
-    res.json({ is_online: result.rows[0].is_online });
+    // ================================
+    // 3) ตรวจว่าฝั่งนั้นส่งคำขอมาให้เราไหม (incoming)
+    // ================================
+    const incoming = await pool.query(
+      `
+      SELECT 1 FROM friend_requests
+      WHERE sender_id=$1 AND receiver_id=$2 AND status='pending'
+      `,
+      [target, me]
+    );
+
+    const isIncomingRequest = incoming.rowCount > 0;
+
+    // ================================
+    // 4) ตรวจว่าเราส่งคำขอไปให้เค้าหรือยัง (sent)
+    // ================================
+    const sent = await pool.query(
+      `
+      SELECT 1 FROM friend_requests
+      WHERE sender_id=$1 AND receiver_id=$2 AND status='pending'
+      `,
+      [me, target]
+    );
+
+    const isSentRequest = sent.rowCount > 0;
+
+    // ================================
+    // 5) สร้าง field status ให้ frontend
+    // ================================
+    let status = null;
+    if (isFriend) status = "friend";
+    else if (isIncomingRequest) status = "incoming";
+    else if (isSentRequest) status = "sent";
+
+    // ================================
+    // 6) ส่ง response ให้ frontend ครบทั้งหมด
+    // ================================
+    res.json({
+      is_online,            // เดิม
+      isFriend,             // เดิม
+      isIncomingRequest,    // เดิม
+      isSentRequest,        // เดิม
+      is_favorite,          // เดิม
+
+      // ⭐ เพิ่มเพื่อรองรับ RandomChatRoom + FriendDetail
+      status,               // friend | incoming | sent | null
+      isOnline: is_online,  // duplicate ช่วยให้ง่ายต่อ frontend
+      isFavorite: is_favorite,
+    });
+
   } catch (err) {
     console.error("getFriendStatus error:", err);
-    res.status(500).json({ error: "ไม่สามารถโหลดสถานะออนไลน์ได้" });
+    res.status(500).json({ error: "โหลดสถานะเพื่อนไม่สำเร็จ" });
   }
 }
 

@@ -1,6 +1,5 @@
 // src/components/FriendDetailModal.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 
 export default function FriendDetailModal({
@@ -16,45 +15,47 @@ export default function FriendDetailModal({
 }) {
   if (!friend) return null;
 
-  const navigate = useNavigate();
-
-  // ดึงสถานะจาก props → ไม่ใช้จาก friend object
-  const isFriend = friend.isFriend === true;
-  const isIncomingRequest = friend.isIncomingRequest === true;
-  const isSentRequest = friend.isSentRequest === true;
-
   const [avatar, setAvatar] = useState(null);
   const [item, setItem] = useState(null);
-
   const [isOnline, setIsOnline] = useState(friend.is_online);
 
+  // ===============================
+  // โหลด avatar / item + สถานะออนไลน์
+  // ===============================
   useEffect(() => {
     if (!friend) return;
 
-    // โหลด avatar
+    // ดึง avatar
     if (friend.avatar_id) {
-      api.get(`/avatars/${friend.avatar_id}`).then((res) => setAvatar(res.data));
+      api.get(`/avatars/${friend.avatar_id}`)
+        .then((res) => setAvatar(res.data))
+        .catch(() => {});
     }
 
-    // โหลดไอเทม
+    // ดึง item
     if (friend.item_id) {
-      api.get(`/items/${friend.item_id}`).then((res) => setItem(res.data));
+      api.get(`/items/${friend.item_id}`)
+        .then((res) => setItem(res.data))
+        .catch(() => {});
     }
 
     // โหลดสถานะออนไลน์แบบสด
     api.get(`/friends/${friend.id}/status`)
       .then((res) => setIsOnline(res.data.is_online))
-      .catch(() => { });
+      .catch(() => {});
   }, [friend]);
 
+  // ===============================
+  // UI ของ modal
+  // ===============================
   return (
     <div
       className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 animate-fadeIn"
-      onClick={onClose}   // คลิกพื้นหลังเพื่อปิด
+      onClick={onClose}
     >
       <div
         className="bg-white/95 rounded-3xl shadow-2xl w-full max-w-md p-8 relative border border-[#bcecff] animate-slideUp"
-        onClick={(e) => e.stopPropagation()}  //กันไม่ให้คลิกปิดเวลาอยู่ใน modal
+        onClick={(e) => e.stopPropagation()}
       >
         {/* ปุ่มปิด */}
         <button
@@ -74,7 +75,7 @@ export default function FriendDetailModal({
               <img
                 src={item.image_url || item.imageUrl}
                 alt="item"
-                className="absolute inset-0 w-full h-full object-contain opacity-95 z-10"
+                className="absolute inset-0 w-full h-full object-contain opacity-90 z-10"
               />
             )}
 
@@ -88,17 +89,17 @@ export default function FriendDetailModal({
           </div>
         </div>
 
-        {/* ชื่อ */}
+        {/* ชื่อ + Online */}
         <div className="text-center mb-4">
           <h2 className="text-2xl font-extrabold text-gray-800 flex items-center justify-center gap-2">
             {friend.display_name}
             {friend.is_favorite && <span className="text-yellow-400">⭐</span>}
           </h2>
 
-          {/* ใช้ isOnline แทน friend.is_online */}
           <p
-            className={`text-sm font-medium ${isOnline ? "text-green-500" : "text-gray-400"
-              }`}
+            className={`text-sm font-medium ${
+              isOnline ? "text-green-500" : "text-gray-400"
+            }`}
           >
             {isOnline ? "🟢 ออนไลน์" : "⚪ ออฟไลน์"}
           </p>
@@ -133,85 +134,43 @@ export default function FriendDetailModal({
         {/* ปุ่ม Action */}
         <div className="mt-8 flex flex-col gap-3">
 
-          {/* request ส่งเข้ามา → accept / decline */}
-          {isIncomingRequest ? (
+          {/* —————— กรณีมีคำขอเข้ามา —————— */}
+          {friend.isIncomingRequest ? (
             <>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAcceptRequest(friend.id);
-                }}
+                onClick={() => onAcceptRequest && onAcceptRequest(friend.id)}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
                 ยอมรับคำขอ
               </button>
 
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeclineRequest(friend.id);
-                }}
+                onClick={() => onDeclineRequest && onDeclineRequest(friend.id)}
                 className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
-                ปฏิเสธ
+                ปฏิเสธคำขอ
               </button>
             </>
-          ) : !isFriend ? (
+          ) : friend.isFriend ? (
 
-            /* ยังไม่เป็นเพื่อน → add / block */
-            <>
-              {!isSentRequest ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddFriend(friend.id);
-                  }}
-                  className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold shadow-md"
-                >
-                  เพิ่มเพื่อน
-                </button>
-              ) : (
-                <span className="text-gray-500 text-center">📨 ส่งคำขอแล้ว</span>
-              )}
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBlockUser(friend.id);
-                  onClose();
-                }}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
-              >
-                บล็อค
-              </button>
-            </>
-          ) : (
-
-            /* เป็นเพื่อนแล้ว → chat / star / unfriend */
+            /* —————— เป็นเพื่อนแล้ว —————— */
             <>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChat(friend.id);
-                }}
+                onClick={() => onChat(friend.id)}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
                 แชท
               </button>
 
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(friend.id);
-                }}
+                onClick={() => onToggleFavorite(friend.id)}
                 className="bg-yellow-400 hover:bg-yellow-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
               >
                 {friend.is_favorite ? "เอาดาวออก" : "ปักดาวเพื่อน"}
               </button>
 
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   if (window.confirm(`ต้องการลบเพื่อน ${friend.display_name}?`)) {
                     onRemoveFriend(friend.id);
                   }
@@ -221,7 +180,33 @@ export default function FriendDetailModal({
                 ลบเพื่อน
               </button>
             </>
+          ) : (
+
+            /* —————— ยังไม่เป็นเพื่อน —————— */
+            <>
+              {!friend.isSentRequest ? (
+                <button
+                  onClick={() => onAddFriend(friend.id)}
+                  className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold shadow-md"
+                >
+                  เพิ่มเพื่อน
+                </button>
+              ) : (
+                <p className="text-center text-gray-500">📨 ส่งคำขอแล้ว</p>
+              )}
+
+              <button
+                onClick={() => {
+                  onBlockUser(friend.id);
+                  onClose();
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md"
+              >
+                บล็อคผู้ใช้
+              </button>
+            </>
           )}
+
         </div>
       </div>
     </div>

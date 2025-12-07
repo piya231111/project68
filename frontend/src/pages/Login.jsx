@@ -4,6 +4,28 @@ import { api, setToken } from "../api";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 
+async function loadUserRelations(me) {
+  try {
+    const token = localStorage.getItem("token");
+
+    const fr = await fetch("http://localhost:7000/api/friends", {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json());
+
+    const bl = await fetch("http://localhost:7000/api/friends/blocked", {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(r => r.json());
+
+    // ⭐ ลบข้อมูลซ้ำด้วย Set()
+    me.friends = [...new Set(fr.friends.map(f => f.id))];
+    me.blocked = [...new Set(bl.blocked.map(b => b.id))];
+
+    localStorage.setItem("user", JSON.stringify(me));
+  } catch (err) {
+    console.error("โหลด friends/blocked ไม่สำเร็จ:", err);
+  }
+}
+
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
@@ -32,9 +54,11 @@ export default function Login() {
       // รอ backend อัปเดตสถานะ online
       await new Promise((res) => setTimeout(res, 150));
 
-      // 🔹 ดึงข้อมูล me
       const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
+
+      // โหลดเพื่อน + บล็อค
+      await loadUserRelations(me);
 
       localStorage.setItem("userId", me.id);
       localStorage.setItem("user", JSON.stringify(me));
@@ -75,6 +99,9 @@ export default function Login() {
 
       const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
+
+      // โหลดเพื่อน + บล็อค
+      await loadUserRelations(me);
 
       localStorage.setItem("userId", me.id);
       localStorage.setItem("user", JSON.stringify(me));
