@@ -19,6 +19,8 @@ import Notifications from "./pages/Notifications";
 import ChatRoom from "./pages/chat/ChatRoom";
 import RandomChatWaiting from "./pages/RandomChatWaiting";
 import RandomChatRoom from "./pages/RandomChatRoom";
+import GroupChatLobby from "./pages/GroupChatLobby";
+import GroupChatRoom from "./pages/chat/GroupChatRoom";
 
 function App() {
   return (
@@ -39,6 +41,7 @@ function App() {
 
         <Route path="/chat/random/wait" element={<RandomChatWaiting me={JSON.parse(localStorage.getItem("user"))} />} />
         <Route path="/chat/random/room/:roomId" element={<RandomChatRoom />} />
+        <Route path="/chat/group/:roomId" element={<GroupChatRoom />} />
 
         {/* ✅ กลุ่ม “หลัง login” มี Header */}
         <Route element={<Layout />}>
@@ -50,6 +53,7 @@ function App() {
           <Route path="/friends" element={<FriendsPage />} />
           <Route path="/friends/manage" element={<ManageFriends />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/chat/group" element={<GroupChatLobby />} />
         </Route>
 
         {/* ✅ กลุ่ม Setup (ไม่มี Header) */}

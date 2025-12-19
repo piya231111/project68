@@ -23,6 +23,7 @@ import friendRoutes from "./routes/friendRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import groupChatRoutes from "./routes/groupChatRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -53,6 +54,8 @@ app.use("/api/friends", friendRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/chat/group", groupChatRoutes);
+
 
 // CREATE HTTP SERVER
 const server = http.createServer(app);

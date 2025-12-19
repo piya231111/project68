@@ -7,6 +7,8 @@ import { aiModerate } from "./utils/textModerationAI.js";
 let onlineUsers = new Map();
 let roomMembers = new Map();
 
+let socketToUser = new Map();
+
 // ==== RANDOM CHAT ====
 let randomWaiting = [];
 let randomRooms = {};
@@ -300,19 +302,153 @@ export function setupWebSocket(server) {
     });
 
     /* =============================
+      GROUP CHAT: JOIN ROOM
+    ============================= */
+    socket.on("groupChat:join", async ({ roomId, user }) => {
+      if (!roomId || !user) return;
+
+      // จำว่า socket นี้คือ user คนนี้
+      socketToUser.set(socket.id, String(user.id));
+
+      // เช็กห้องเต็ม
+      const r = await pool.query(
+        `SELECT members FROM group_rooms WHERE id = $1`,
+        [roomId]
+      );
+
+      if (r.rows.length > 0 && r.rows[0].members >= 10) {
+        io.to(socket.id).emit("groupChat:full", {
+          error: "ห้องเต็ม (จำกัด 10 คน)",
+        });
+        return;
+      }
+
+      // join room
+      socket.join(roomId);
+
+      if (!roomMembers.has(roomId)) roomMembers.set(roomId, new Set());
+      roomMembers.get(roomId).add(socket.id);
+
+      console.log(`User ${user.id} joined GroupRoom ${roomId}`);
+
+      socket.to(roomId).emit("groupChat:userJoin", {
+        userId: user.id,
+        name: user.display_name,
+      });
+    });
+
+    /* =============================
+      GROUP CHAT: MESSAGE
+    ============================= */
+    socket.on("groupChat:message", (msg) => {
+      const { roomId, sender, text, time } = msg;
+
+      io.to(roomId).emit("groupChat:message", {
+        sender,
+        text,
+        time: time || Date.now(),
+      });
+    });
+
+    /* =============================
+      GROUP CHAT: LEAVE
+    ============================= */
+    socket.on("groupChat:leave", async ({ roomId, userId }) => {
+      socket.leave(roomId);
+
+      const members = roomMembers.get(roomId);
+      if (members) members.delete(socket.id);
+
+      socket.to(roomId).emit("groupChat:userLeft", { userId });
+
+      // ลบออกจาก DB
+      await pool.query(`
+    DELETE FROM group_room_members
+    WHERE room_id = $1 AND user_id = $2
+  `, [roomId, userId]);
+
+      // อัปเดตจำนวนสมาชิกจริง
+      const check = await pool.query(`
+    SELECT COUNT(*) AS total 
+    FROM group_room_members 
+    WHERE room_id = $1
+  `, [roomId]);
+
+      const count = Number(check.rows[0].total);
+
+      await pool.query(`
+    UPDATE group_rooms
+    SET members = $1
+    WHERE id = $2
+  `, [count, roomId]);
+
+      if (count === 0) {
+        await pool.query(`DELETE FROM group_rooms WHERE id = $1`, [roomId]);
+        roomMembers.delete(roomId);
+        console.log(`🗑 ลบห้อง ${roomId} เพราะไม่มีสมาชิก`);
+      }
+    });
+
+    /* =============================
           DISCONNECT
     ============================== */
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       console.log("Socket disconnected:", socket.id);
 
-      for (const [uid, sid] of onlineUsers.entries()) {
-        if (sid === socket.id) onlineUsers.delete(uid);
+      const disconnectedUserId = socketToUser.get(socket.id);
+      socketToUser.delete(socket.id);
+
+      if (disconnectedUserId) {
+        onlineUsers.delete(disconnectedUserId);
       }
 
-      for (const [roomId, set] of roomMembers.entries()) {
-        set.delete(socket.id);
+      // ตรวจในทุกห้องที่ socket นี้เคยอยู่
+      for (const [roomId, members] of roomMembers.entries()) {
+
+        if (members.has(socket.id)) {
+
+          // เอา socket ออกจาก memory
+          members.delete(socket.id);
+
+          if (disconnectedUserId) {
+            // ลบออกจาก DB
+            await pool.query(`
+          DELETE FROM group_room_members 
+          WHERE room_id = $1 AND user_id = $2
+        `, [roomId, disconnectedUserId]);
+
+            // แจ้งผู้ใช้คนอื่น
+            socket.to(roomId).emit("groupChat:userLeft", {
+              userId: disconnectedUserId,
+            });
+          }
+          
+          const check = await pool.query(`
+        SELECT COUNT(*) AS total
+        FROM group_room_members
+        WHERE room_id = $1
+      `, [roomId]);
+
+          const count = Number(check.rows[0].total);
+
+          // อัปเดตจำนวนจริงกลับเข้า group_rooms
+          await pool.query(`
+        UPDATE group_rooms 
+        SET members = $1
+        WHERE id = $2
+      `, [count, roomId]);
+
+          // ถ้าไม่มีสมาชิกแล้ว ลบห้อง
+          if (count === 0) {
+            await pool.query(`DELETE FROM group_rooms WHERE id = $1`, [roomId]);
+            roomMembers.delete(roomId);
+            console.log(`🗑 GroupRoom ${roomId} ถูกลบเพราะไม่มีสมาชิกเหลือ`);
+          }
+
+        }
       }
 
+      // RANDOM CHAT (เหมือนเดิม)
       randomWaiting = randomWaiting.filter(u => u.socketId !== socket.id);
 
       setTimeout(() => {
