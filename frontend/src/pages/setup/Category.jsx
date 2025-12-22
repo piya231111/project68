@@ -48,7 +48,7 @@ export default function Category() {
     >
       <div className="flex flex-col md:flex-row w-full max-w-7xl bg-white rounded-3xl shadow-lg border border-[#d0f6ff] overflow-hidden">
         
-        {/* ✅ ด้านซ้าย: Preview */}
+        {/* ด้านซ้าย: Preview */}
         <aside className="md:w-[45%] bg-[#F8FEFF] flex flex-col items-center justify-center p-14 border-b md:border-b-0 md:border-r border-[#d0f6ff]">
           <h2 className="text-3xl font-bold mb-6 text-[#00B8E6]">
             หมวดหมู่ที่คุณเลือก
@@ -74,7 +74,7 @@ export default function Category() {
           </p>
         </aside>
 
-        {/* ✅ ด้านขวา: ตัวเลือก */}
+        {/* ด้านขวา: ตัวเลือก */}
         <section className="flex-1 p-12">
           <div className="flex items-center justify-between mb-10">
             <h1 className="text-3xl font-bold text-[#00B8E6]">
@@ -102,7 +102,7 @@ export default function Category() {
             </div>
           </div>
 
-          {/* ✅ ปุ่มหมวดหมู่แบบใหญ่และโปร */}
+          {/* ปุ่มหมวดหมู่แบบใหญ่และโปร */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
             {ALL_CATEGORIES.map((cat) => (
               <button

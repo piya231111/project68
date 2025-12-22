@@ -23,6 +23,7 @@ export default function Notifications() {
   const handleClick = (n) => {
     if (n.type === "chat_message") navigate(`/chat/${n.friend_id}`);
     if (n.type === "friend_request") navigate("/friends");
+    if (n.type === "group_invite") navigate(`/chat/group/${n.group_room_id}`);
   };
 
   const deleteItem = async (id) => {
@@ -44,6 +45,8 @@ export default function Notifications() {
         return "💬";
       case "friend_request":
         return "👥";
+      case "group_invite":
+        return "📢";
       default:
         return "🔔";
     }

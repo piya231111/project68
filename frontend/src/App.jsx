@@ -22,11 +22,12 @@ import RandomChatRoom from "./pages/RandomChatRoom";
 import GroupChatLobby from "./pages/GroupChatLobby";
 import GroupChatRoom from "./pages/chat/GroupChatRoom";
 
+
 function App() {
   return (
     <Router>
       <Routes>
-        {/* ✅ หน้า Auth (ไม่มี Header) */}
+        {/* หน้า Auth (ไม่มี Header) */}
         <Route path="/" element={
           localStorage.getItem("access")
             ? <Navigate to="/home" />
@@ -43,7 +44,7 @@ function App() {
         <Route path="/chat/random/room/:roomId" element={<RandomChatRoom />} />
         <Route path="/chat/group/:roomId" element={<GroupChatRoom />} />
 
-        {/* ✅ กลุ่ม “หลัง login” มี Header */}
+        {/* กลุ่ม “หลัง login” มี Header */}
         <Route element={<Layout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/profile" element={<ProfileView />} />
@@ -56,7 +57,7 @@ function App() {
           <Route path="/chat/group" element={<GroupChatLobby />} />
         </Route>
 
-        {/* ✅ กลุ่ม Setup (ไม่มี Header) */}
+        {/* กลุ่ม Setup (ไม่มี Header) */}
         <Route path="/setup/country" element={<SelectCountry />} />
         <Route path="/setup/avatar" element={<Avatar />} />
         <Route path="/setup/items" element={<Items />} />

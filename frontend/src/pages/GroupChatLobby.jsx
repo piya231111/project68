@@ -103,8 +103,8 @@ export default function GroupChatLobby() {
 
     if (!res.ok) return alert(data.error || "สร้างห้องไม่สำเร็จ");
 
-    // ⭐⭐⭐ หลังสร้างห้อง → เด้งเข้าห้องทันที
-    navigate(`/chat/group/${data.room.id}`);
+    // หลังสร้างห้อง → เด้งเข้าห้องทันที
+    navigate(`/chat/group/${data.roomId}`);
 
     setCreateModal(false);
     setNewRoomName("");

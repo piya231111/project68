@@ -66,7 +66,7 @@ export async function login(req, res) {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ error: "รหัสผ่านไม่ถูกต้อง" });
 
-    // ⭐ สร้างโปรไฟล์ถ้ายังไม่มี
+    // สร้างโปรไฟล์ถ้ายังไม่มี
     await pool.query(
       `INSERT INTO profiles (user_id, is_online, last_seen)
        VALUES ($1, true, NOW())

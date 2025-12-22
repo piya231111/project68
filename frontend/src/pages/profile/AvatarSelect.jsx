@@ -28,13 +28,13 @@ export default function AvatarSelect() {
         setAvatars(list);
         setMe(user);
 
-        // ✅ โหลด item ปัจจุบัน
+        // โหลด item ปัจจุบัน
         if (user?.item_id) {
           const itemRes = await api.get(`/items/${user.item_id}`);
           setItem(itemRes.data);
         }
 
-        // ✅ โหลด avatar ปัจจุบันโดยตรง (ไม่พึ่ง list)
+        // โหลด avatar ปัจจุบันโดยตรง (ไม่พึ่ง list)
         if (user?.avatar_id) {
           try {
             const avatarRes = await api.get(`/avatars/${user.avatar_id}`);
@@ -71,7 +71,7 @@ export default function AvatarSelect() {
     }
   };
 
-  // ✅ pagination logic
+  // pagination logic
   const totalPages = Math.ceil(avatars.length / perPage);
   const startIdx = (currentPage - 1) * perPage;
   const currentAvatars = avatars.slice(startIdx, startIdx + perPage);
@@ -80,7 +80,7 @@ export default function AvatarSelect() {
     <main className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
       <div className="flex flex-col md:flex-row w-full max-w-7xl bg-white rounded-3xl shadow-lg border border-[#d0f6ff] overflow-hidden">
 
-        {/* ✅ ฝั่งซ้าย - Preview */}
+        {/* ฝั่งซ้าย - Preview */}
         <aside className="md:w-1/2 bg-[#F8FEFF] flex flex-col items-center justify-center p-10 border-b md:border-b-0 md:border-r border-[#d0f6ff]">
           <h2 className="text-2xl font-bold mb-6 text-[#00B8E6]">
             ตัวละครของคุณ
@@ -113,7 +113,7 @@ export default function AvatarSelect() {
           )}
         </aside>
 
-        {/* ✅ ฝั่งขวา - เลือกอวตาร์ */}
+        {/* ฝั่งขวา - เลือกอวตาร์ */}
         <section className="flex-1 p-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-[#00B8E6]">

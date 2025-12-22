@@ -4,8 +4,9 @@ import {
     getNotificationCount,
     getNotifications,
     markNotificationRead,
-    deleteNotification,     // ⭐ เพิ่ม
-    clearNotifications      // ⭐ เพิ่ม
+    deleteNotification,    
+    clearNotifications,
+    sendGroupInvite   
 } from "../controllers/notificationController.js";
 
 const router = express.Router();
@@ -15,10 +16,12 @@ router.get("/notifications", authRequired, getNotifications);
 
 router.post("/notifications/:id/read", authRequired, markNotificationRead);
 
-// ⭐ ลบแจ้งเตือนรายตัว
+// ลบแจ้งเตือนรายตัว
 router.delete("/notifications/:id", authRequired, deleteNotification);
 
-// ⭐ ลบแจ้งเตือนทั้งหมด
+// ลบแจ้งเตือนทั้งหมด
 router.delete("/notifications", authRequired, clearNotifications);
+
+router.post("/invite-group", authRequired, sendGroupInvite);
 
 export default router;

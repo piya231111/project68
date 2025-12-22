@@ -6,7 +6,7 @@ export default function MessageList({ messages }) {
   const bottomRef = useRef(null);
 
   /* ---------------------------------------------------
-     ⭐ Auto-scroll ลงล่างสุด "ทุกครั้ง" เมื่อมีข้อความใหม่
+     Auto-scroll ลงล่างสุด "ทุกครั้ง" เมื่อมีข้อความใหม่
   ---------------------------------------------------- */
   useEffect(() => {
     const el = listRef.current;

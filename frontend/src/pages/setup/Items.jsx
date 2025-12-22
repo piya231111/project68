@@ -49,7 +49,7 @@ export default function Items() {
     }
   };
 
-  // ✅ pagination
+  // pagination
   const totalPages = Math.ceil(items.length / perPage);
   const startIdx = (currentPage - 1) * perPage;
   const currentItems = items.slice(startIdx, startIdx + perPage);
@@ -61,7 +61,7 @@ export default function Items() {
     >
       <div className="flex flex-col md:flex-row w-full max-w-7xl bg-white rounded-3xl shadow-lg border border-[#d0f6ff] overflow-hidden">
         
-        {/* ✅ ฝั่งซ้าย - Preview */}
+        {/* ฝั่งซ้าย - Preview */}
         <aside className="md:w-1/2 bg-[#F8FEFF] flex flex-col items-center justify-center p-10 border-b md:border-b-0 md:border-r border-[#d0f6ff]">
           <h2 className="text-2xl font-bold mb-6 text-[#00B8E6]">
             สิ่งที่คุณเลือก
@@ -97,7 +97,7 @@ export default function Items() {
           )}
         </aside>
 
-        {/* ✅ ฝั่งขวา - เลือกไอเท็ม */}
+        {/* ฝั่งขวา - เลือกไอเท็ม */}
         <section className="flex-1 p-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-[#00B8E6]">
@@ -130,7 +130,7 @@ export default function Items() {
 
           {!loading && !error && (
             <>
-              {/* ✅ Grid แสดงไอเท็ม 6 ตัวต่อหน้า */}
+              {/* Grid แสดงไอเท็ม 6 ตัวต่อหน้า */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
                 {currentItems.map((item) => (
                   <div
@@ -155,7 +155,7 @@ export default function Items() {
                 ))}
               </div>
 
-              {/* ✅ Pagination */}
+              {/* Pagination */}
               <div className="flex justify-center mt-10 gap-2">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
                   <button

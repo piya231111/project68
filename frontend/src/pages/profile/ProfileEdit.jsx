@@ -19,13 +19,13 @@ export default function ProfileEdit() {
   const [item, setItem] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // ✅ ประเทศ autocomplete
+  // ประเทศ autocomplete
   const [country, setCountry] = useState("");
   const [filteredCountries, setFilteredCountries] = useState(ALL_COUNTRIES);
   const [showCountryList, setShowCountryList] = useState(false);
   const countryRef = useRef(null);
 
-  // ✅ หมวดหมู่ popup
+  // หมวดหมู่ popup
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState([]);
 
@@ -55,7 +55,7 @@ export default function ProfileEdit() {
     })();
   }, []);
 
-  // ✅ ค้นหาประเทศ
+  // ค้นหาประเทศ
   const handleCountrySearch = (value) => {
     setCountry(value);
     if (value.trim() === "") setFilteredCountries(ALL_COUNTRIES);
@@ -73,7 +73,7 @@ export default function ProfileEdit() {
     setShowCountryList(false);
   };
 
-  // ✅ ปิด dropdown เมื่อคลิกนอกกล่อง
+  // ปิด dropdown เมื่อคลิกนอกกล่อง
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (countryRef.current && !countryRef.current.contains(event.target)) {
@@ -84,7 +84,7 @@ export default function ProfileEdit() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ✅ Toggle category selection
+  // Toggle category selection
   const toggleCategory = (cat) => {
     if (selectedCategories.includes(cat)) {
       setSelectedCategories(selectedCategories.filter((x) => x !== cat));
@@ -121,7 +121,7 @@ export default function ProfileEdit() {
 
   return (
     <main className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
-      {/* ✅ ฝั่งซ้าย: อวตาร์ */}
+      {/* ฝั่งซ้าย: อวตาร์ */}
       <div className="flex flex-col items-center justify-center flex-1">
         <div className="relative w-[420px] h-[560px] flex justify-center items-center">
           {item && (
@@ -156,7 +156,7 @@ export default function ProfileEdit() {
         </div>
       </div>
 
-      {/* ✅ ฝั่งขวา: ฟอร์ม */}
+      {/* ฝั่งขวา: ฟอร์ม */}
       <div className="flex flex-1 items-center justify-center">
         <div className="bg-white rounded-3xl shadow-lg border border-[#d0f6ff] p-10 w-full max-w-md">
           <h2 className="text-2xl font-bold text-[#00B8E6] mb-6 text-center">
@@ -202,7 +202,7 @@ export default function ProfileEdit() {
               )}
             </div>
 
-            {/* ✅ หมวดหมู่ (เปิด popup) */}
+            {/* หมวดหมู่ (เปิด popup) */}
             <div>
               <label className="block text-gray-600 mb-1">
                 หมวดหมู่ความสนใจ
@@ -241,7 +241,7 @@ export default function ProfileEdit() {
         </div>
       </div>
 
-      {/* ✅ Popup modal สำหรับเลือกหมวดหมู่ */}
+      {/* Popup modal สำหรับเลือกหมวดหมู่ */}
       {showCategoryModal && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center z-50">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-10 relative">

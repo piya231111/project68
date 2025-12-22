@@ -43,7 +43,7 @@ export default function ProfileView() {
 
   return (
     <section className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
-      {/* ✅ ฝั่งซ้าย: อวตาร์ */}
+      {/* ฝั่งซ้าย: อวตาร์ */}
       <div className="flex flex-col items-center justify-center flex-1">
         <div className="relative w-[420px] h-[560px] flex items-center justify-center">
           {item && (
@@ -68,7 +68,7 @@ export default function ProfileView() {
         <p className="text-gray-600 text-lg">{me?.email}</p>
       </div>
 
-      {/* ✅ ฝั่งขวา: กล่องข้อมูล */}
+      {/* ฝั่งขวา: กล่องข้อมูล */}
       <div className="flex flex-1 items-center justify-center">
         <div className="bg-white rounded-3xl shadow-lg border border-[#d0f6ff] p-10 w-full max-w-md">
           <h2 className="text-2xl font-bold text-[#00B8E6] mb-6 text-center">

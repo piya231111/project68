@@ -9,6 +9,9 @@ let roomMembers = new Map();
 
 let socketToUser = new Map();
 
+export let ioInstance = null;
+export let onlineUsersInstance = null;
+
 // ==== RANDOM CHAT ====
 let randomWaiting = [];
 let randomRooms = {};
@@ -34,6 +37,8 @@ export function setupWebSocket(server) {
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
+    ioInstance = io;
+    onlineUsersInstance = onlineUsers;
 
     /* =============================
          ONLINE
@@ -203,7 +208,7 @@ export function setupWebSocket(server) {
           if ((a.friends || []).includes(b.userId)) continue;
           if ((b.friends || []).includes(a.userId)) continue;
 
-          // 🟦 interests ต้องตรงกัน >= 3
+          // interests ต้องตรงกัน >= 3
           if (score < 3) continue;
 
 
@@ -304,85 +309,140 @@ export function setupWebSocket(server) {
     /* =============================
       GROUP CHAT: JOIN ROOM
     ============================= */
-    socket.on("groupChat:join", async ({ roomId, user }) => {
+    socket.on("groupChat:join", async ({ roomId, user, isReconnect }) => {
       if (!roomId || !user) return;
 
-      // จำว่า socket นี้คือ user คนนี้
+      // map socket → user
       socketToUser.set(socket.id, String(user.id));
 
-      // เช็กห้องเต็ม
-      const r = await pool.query(
-        `SELECT members FROM group_rooms WHERE id = $1`,
+      // ❌ อย่าเช็กจาก group_rooms.members (เสี่ยง race)
+      const countRes = await pool.query(
+        `SELECT COUNT(*) FROM group_room_members WHERE room_id = $1`,
         [roomId]
       );
 
-      if (r.rows.length > 0 && r.rows[0].members >= 10) {
+      if (Number(countRes.rows[0].count) >= 10) {
         io.to(socket.id).emit("groupChat:full", {
           error: "ห้องเต็ม (จำกัด 10 คน)",
         });
         return;
       }
 
-      // join room
+      // join socket room
       socket.join(roomId);
 
+      // memory
       if (!roomMembers.has(roomId)) roomMembers.set(roomId, new Set());
       roomMembers.get(roomId).add(socket.id);
 
-      console.log(`User ${user.id} joined GroupRoom ${roomId}`);
+      // ✅ insert DB แบบกันซ้ำ
+      await pool.query(
+        `
+    INSERT INTO group_room_members (room_id, user_id)
+    VALUES ($1, $2)
+    ON CONFLICT DO NOTHING
+    `,
+        [roomId, user.id]
+      );
+
+      console.log(
+        `User ${user.id} joined GroupRoom ${roomId} (reconnect=${!!isReconnect})`
+      );
+
+      // 🔄 อัปเดต member list ทุกคน
+      io.to(roomId).emit("groupChat:syncMembers");
+
+      // 🚨 แสดงข้อความ "เข้าห้อง" เฉพาะเข้าใหม่จริง
+      if (!isReconnect) {
+        socket.to(roomId).emit("groupChat:userJoin", {
+          userId: user.id,
+          name: user.display_name,
+        });
+      }
+
+      // แจ้งกลับเฉพาะ client ตัวเอง
+      io.to(socket.id).emit("groupChat:joinedSelf");
+    });
+
+    /* =============================
+    GROUP CHAT: JOIN FROM INVITE
+    ============================= */
+    socket.on("groupChat:joinFromInvite", async ({ roomId, user }) => {
+      if (!roomId || !user) return;
+
+      socket.join(roomId);
+
+      if (!roomMembers.has(roomId)) {
+        roomMembers.set(roomId, new Set());
+      }
+      roomMembers.get(roomId).add(socket.id);
+
+      console.log(`(INVITE) User ${user.id} joined GroupRoom ${roomId}`);
+
+      // ✅ สำคัญมาก
+      io.to(roomId).emit("groupChat:syncMembers");
 
       socket.to(roomId).emit("groupChat:userJoin", {
         userId: user.id,
         name: user.display_name,
       });
+
+      io.to(socket.id).emit("groupChat:joinedSelf");
     });
 
     /* =============================
       GROUP CHAT: MESSAGE
     ============================= */
     socket.on("groupChat:message", (msg) => {
-      const { roomId, sender, text, time } = msg;
+      const { roomId } = msg;
 
       io.to(roomId).emit("groupChat:message", {
-        sender,
-        text,
-        time: time || Date.now(),
+        sender: msg.sender,
+        name: msg.name,
+        text: msg.text || null,
+        fileUrl: msg.fileUrl || null,
+        type: msg.type || "text",
+        time: msg.time || Date.now(),
       });
     });
 
     /* =============================
       GROUP CHAT: LEAVE
     ============================= */
-    socket.on("groupChat:leave", async ({ roomId, userId }) => {
+    socket.on("groupChat:leave", async ({ roomId, userId, manualLeave }) => {
       socket.leave(roomId);
 
       const members = roomMembers.get(roomId);
       if (members) members.delete(socket.id);
 
-      socket.to(roomId).emit("groupChat:userLeft", { userId });
+      if (manualLeave) {
+        socket.to(roomId).emit("groupChat:userLeft", { userId });
 
-      // ลบออกจาก DB
-      await pool.query(`
-    DELETE FROM group_room_members
-    WHERE room_id = $1 AND user_id = $2
-  `, [roomId, userId]);
+        // ลบสมาชิกออกจาก DB
+        await pool.query(
+          `DELETE FROM group_room_members WHERE room_id = $1 AND user_id = $2`,
+          [roomId, userId]
+        );
+      }
 
-      // อัปเดตจำนวนสมาชิกจริง
-      const check = await pool.query(`
-    SELECT COUNT(*) AS total 
-    FROM group_room_members 
-    WHERE room_id = $1
-  `, [roomId]);
+      // อัปเดตจำนวนสมาชิก
+      const check = await pool.query(
+        `SELECT COUNT(*) AS total FROM group_room_members WHERE room_id = $1`,
+        [roomId]
+      );
 
       const count = Number(check.rows[0].total);
 
-      await pool.query(`
-    UPDATE group_rooms
-    SET members = $1
-    WHERE id = $2
-  `, [count, roomId]);
+      await pool.query(
+        `UPDATE group_rooms SET members = $1 WHERE id = $2`,
+        [count, roomId]
+      );
 
-      if (count === 0) {
+      // ✅ ค่อย sync หลัง DB เสร็จ
+      io.to(roomId).emit("groupChat:syncMembers");
+
+      // ลบห้องถ้าไม่มีสมาชิก
+      if (manualLeave && count === 0) {
         await pool.query(`DELETE FROM group_rooms WHERE id = $1`, [roomId]);
         roomMembers.delete(roomId);
         console.log(`🗑 ลบห้อง ${roomId} เพราะไม่มีสมาชิก`);
@@ -395,79 +455,49 @@ export function setupWebSocket(server) {
     socket.on("disconnect", async () => {
       console.log("Socket disconnected:", socket.id);
 
-      const disconnectedUserId = socketToUser.get(socket.id);
+      const userId = socketToUser.get(socket.id);
       socketToUser.delete(socket.id);
 
-      if (disconnectedUserId) {
-        onlineUsers.delete(disconnectedUserId);
-      }
+      if (!userId) return;
 
-      // ตรวจในทุกห้องที่ socket นี้เคยอยู่
-      for (const [roomId, members] of roomMembers.entries()) {
+      // หา room ที่ user นี้อยู่
+      const result = await pool.query(
+        `SELECT room_id FROM group_room_members WHERE user_id = $1`,
+        [userId]
+      );
 
-        if (members.has(socket.id)) {
+      for (const row of result.rows) {
+        const roomId = row.room_id;
 
-          // เอา socket ออกจาก memory
-          members.delete(socket.id);
+        // ลบออกจาก DB
+        await pool.query(
+          `DELETE FROM group_room_members WHERE room_id = $1 AND user_id = $2`,
+          [roomId, userId]
+        );
 
-          if (disconnectedUserId) {
-            // ลบออกจาก DB
-            await pool.query(`
-          DELETE FROM group_room_members 
-          WHERE room_id = $1 AND user_id = $2
-        `, [roomId, disconnectedUserId]);
+        // นับใหม่
+        const countRes = await pool.query(
+          `SELECT COUNT(*) FROM group_room_members WHERE room_id = $1`,
+          [roomId]
+        );
 
-            // แจ้งผู้ใช้คนอื่น
-            socket.to(roomId).emit("groupChat:userLeft", {
-              userId: disconnectedUserId,
-            });
-          }
-          
-          const check = await pool.query(`
-        SELECT COUNT(*) AS total
-        FROM group_room_members
-        WHERE room_id = $1
-      `, [roomId]);
+        const count = Number(countRes.rows[0].count);
 
-          const count = Number(check.rows[0].total);
+        await pool.query(
+          `UPDATE group_rooms SET members = $1 WHERE id = $2`,
+          [count, roomId]
+        );
 
-          // อัปเดตจำนวนจริงกลับเข้า group_rooms
-          await pool.query(`
-        UPDATE group_rooms 
-        SET members = $1
-        WHERE id = $2
-      `, [count, roomId]);
+        // sync frontend
+        io.to(roomId).emit("groupChat:syncMembers");
 
-          // ถ้าไม่มีสมาชิกแล้ว ลบห้อง
-          if (count === 0) {
-            await pool.query(`DELETE FROM group_rooms WHERE id = $1`, [roomId]);
-            roomMembers.delete(roomId);
-            console.log(`🗑 GroupRoom ${roomId} ถูกลบเพราะไม่มีสมาชิกเหลือ`);
-          }
-
+        // ถ้าไม่มีคน → ลบห้อง
+        if (count === 0) {
+          await pool.query(`DELETE FROM group_rooms WHERE id = $1`, [roomId]);
+          roomMembers.delete(roomId);
+          console.log("🗑 ลบห้องอัตโนมัติ:", roomId);
         }
       }
-
-      // RANDOM CHAT (เหมือนเดิม)
-      randomWaiting = randomWaiting.filter(u => u.socketId !== socket.id);
-
-      setTimeout(() => {
-        for (const roomId in randomRooms) {
-          const room = randomRooms[roomId];
-
-          if (room.sockets.includes(socket.id)) {
-            const stillActive = room.sockets.some(sid =>
-              io.sockets.sockets.get(sid)
-            );
-
-            if (!stillActive) {
-              io.to(roomId).emit("randomChat:end");
-              delete randomRooms[roomId];
-              console.log("Room closed:", roomId);
-            }
-          }
-        }
-      }, 5000);
     });
   });
 }

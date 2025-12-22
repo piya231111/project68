@@ -258,7 +258,7 @@ export async function sendFriendRequest(req, res) {
       [senderId, receiverId]
     );
 
-    // ⭐ เพิ่มแจ้งเตือน
+    // เพิ่มแจ้งเตือน
     await pool.query(
       `INSERT INTO notifications (user_id, type, title, body)
        VALUES ($1, 'friend_request', 'คำขอเป็นเพื่อนใหม่', $2)`,
@@ -615,15 +615,15 @@ export async function getFriendStatus(req, res) {
     // 6) ส่ง response ให้ frontend ครบทั้งหมด
     // ================================
     res.json({
-      is_online,            // เดิม
-      isFriend,             // เดิม
-      isIncomingRequest,    // เดิม
-      isSentRequest,        // เดิม
-      is_favorite,          // เดิม
+      is_online,            
+      isFriend,          
+      isIncomingRequest,   
+      isSentRequest,      
+      is_favorite,          
 
-      // ⭐ เพิ่มเพื่อรองรับ RandomChatRoom + FriendDetail
-      status,               // friend | incoming | sent | null
-      isOnline: is_online,  // duplicate ช่วยให้ง่ายต่อ frontend
+      // เพิ่มเพื่อรองรับ RandomChatRoom + FriendDetail
+      status,              
+      isOnline: is_online,  
       isFavorite: is_favorite,
     });
 

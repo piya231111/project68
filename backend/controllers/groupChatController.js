@@ -30,7 +30,6 @@ export async function getAllGroupRooms(req, res) {
     }
 }
 
-
 /* ================================
    ดึงสมาชิกรายห้อง
 ================================ */
@@ -38,24 +37,38 @@ export async function getGroupRoomMembers(req, res) {
     try {
         const { roomId } = req.params;
 
-        const members = await pool.query(
-            `
-      SELECT 
-        u.id, 
-        u.display_name, 
-        p.avatar_id, 
-        p.item_id,
-        p.country,
-        p.interests
-      FROM group_room_members gm
-      JOIN users u ON u.id = gm.user_id
-      LEFT JOIN profiles p ON p.user_id = u.id
-      WHERE gm.room_id = $1
-    `,
+        // ดึงข้อมูลห้อง
+        const roomInfo = await pool.query(
+            `SELECT id, name, type, members FROM group_rooms WHERE id = $1`,
             [roomId]
         );
 
-        res.json({ members: members.rows });
+        if (roomInfo.rowCount === 0) {
+            return res.status(404).json({ error: "ไม่พบห้อง" });
+        }
+
+        // ดึงสมาชิก
+        const members = await pool.query(
+            `
+            SELECT 
+                u.id, 
+                u.display_name, 
+                p.avatar_id, 
+                p.item_id,
+                p.country,
+                p.interests
+            FROM group_room_members gm
+            JOIN users u ON u.id = gm.user_id
+            LEFT JOIN profiles p ON p.user_id = u.id
+            WHERE gm.room_id = $1
+        `,
+            [roomId]
+        );
+
+        res.json({
+            room: roomInfo.rows[0],  // ส่ง type กลับไป
+            members: members.rows    // รายชื่อสมาชิก
+        });
 
     } catch (err) {
         console.error("getGroupRoomMembers ERROR:", err);
@@ -82,7 +95,7 @@ export async function joinPrivateGroupRoom(req, res) {
 
         const r = room.rows[0];
 
-        // 🔴 ห้ามเข้าถ้าห้องเต็ม
+        // ห้ามเข้าถ้าห้องเต็ม
         if (r.members >= 10)
             return res.status(403).json({ error: "ห้องเต็ม (จำกัด 10 คน)" });
 
@@ -156,7 +169,7 @@ export async function createGroupRoom(req, res) {
 
         return res.json({
             ok: true,
-            roomId: room.id,   // ⭐ สำคัญ
+            roomId: room.id,  
             room,
         });
 
@@ -181,7 +194,7 @@ export async function joinPublicGroupRoom(req, res) {
 
         const r = room.rows[0];
 
-        // 🔴 ห้ามเข้าถ้าห้องเต็ม
+        // ห้ามเข้าถ้าห้องเต็ม
         if (r.members >= 10)
             return res.status(403).json({ error: "ห้องเต็ม (จำกัด 10 คน)" });
 

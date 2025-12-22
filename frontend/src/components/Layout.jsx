@@ -33,7 +33,7 @@ export default function Layout() {
     ====================================================== */
     useEffect(() => {
         if (!socket.connected) {
-            socket.connect();  // ⭐ connect แค่ครั้งเดียว
+            socket.connect();  // connect แค่ครั้งเดียว
         }
 
         return () => {
@@ -78,7 +78,7 @@ export default function Layout() {
             console.error("logout error:", err);
         }
 
-        socket.disconnect();  // ⭐ ถูกต้อง
+        socket.disconnect();  // ถูกต้อง
 
         localStorage.removeItem("token");
         navigate("/login", { replace: true });

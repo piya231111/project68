@@ -21,7 +21,7 @@ export default function ChatRoom() {
   const {
     roomId,
     messages,
-    roomReady,      // ⭐ เพิ่มตรงนี้
+    roomReady,      // เพิ่มตรงนี้
     sendTextMessage,
     sendMediaMessage,
   } = useChatMessages(friendId);
@@ -52,7 +52,7 @@ export default function ChatRoom() {
         sendTextMessage={sendTextMessage}
         sendMediaMessage={sendMediaMessage}
         openGifModal={() => setGifModalOpen(true)}
-        roomReady={roomReady}    // ⭐ ตอนนี้จะไม่ error แล้ว
+        roomReady={roomReady}    // ตอนนี้จะไม่ error แล้ว
       />
 
       {gifModalOpen && (

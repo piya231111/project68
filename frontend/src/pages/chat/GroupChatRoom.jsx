@@ -5,6 +5,7 @@ import { socket } from "../../socket";
 import FriendDetailModal from "../../components/FriendDetailModal";
 import GifModal from "../chat/GifModal";
 import useGifSearch from "../chat/hooks/useGifSearchRandom";
+import InviteFriendModal from "../../components/InviteFriendModal";
 
 export default function GroupChatRoom() {
   const { roomId } = useParams();
@@ -15,6 +16,9 @@ export default function GroupChatRoom() {
   const [members, setMembers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [friendMap, setFriendMap] = useState({});
+
 
   const me = JSON.parse(localStorage.getItem("user"));
   const bottomRef = useRef(null);
@@ -30,103 +34,179 @@ export default function GroupChatRoom() {
     sendGif,
   } = useGifSearch(roomId, "group");
 
-  // เข้าร่วมห้องใน DB ก่อน แล้วค่อย join socket
+  // JOIN ห้องใน DB → แล้วค่อย join socket
   useEffect(() => {
     if (!roomId) return;
 
     async function joinRoomDB() {
-      const token = localStorage.getItem("token");
+      try {
+        const token = localStorage.getItem("token");
 
-      await fetch(`http://localhost:7000/api/chat/group/join/${roomId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password: null }),
-      });
+        // STEP 1: Load room info
+        const roomRes = await fetch(
+          `http://localhost:7000/api/chat/group/${roomId}/members`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await roomRes.json();
+        const roomType = data?.room?.type;
+
+        // STEP 2: Join room (DB)
+        if (roomType === "public") {
+          await fetch(
+            `http://localhost:7000/api/chat/group/join-public/${roomId}`,
+            {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+        } else {
+          await fetch(
+            `http://localhost:7000/api/chat/group/join/${roomId}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ password: null }),
+            }
+          );
+        }
+
+        // STEP 3: ตรวจว่า reconnect ไหม
+        const key = `group_joined_${roomId}`;
+        const isReconnect = localStorage.getItem(key) === "1";
+
+        // STEP 4: join socket (ตัวสำคัญ)
+        socket.emit("groupChat:join", {
+          roomId,
+          user: me,
+          isReconnect,
+        });
+
+        // บันทึกว่าเคยเข้าห้องนี้แล้ว
+        localStorage.setItem(key, "1");
+
+      } catch (err) {
+        console.error("JOIN GROUP ROOM ERROR:", err);
+      }
     }
 
-    joinRoomDB();  // ⭐ บันทึกเข้าฐานข้อมูล
-    socket.emit("groupChat:join", { roomId, user: me });  // ⭐ join socket
-
+    joinRoomDB();
   }, [roomId]);
 
+  useEffect(() => {
+    if (!roomId) return;
 
-  // โหลด cache ข้อความ (localStorage)
+    loadMembers();
+    loadFriendsStatus(); //สำคัญมาก
+  }, [roomId]);
+
+  // โหลดสมาชิก
+  async function loadMembers() {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(
+        `http://localhost:7000/api/chat/group/${roomId}/members`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = await res.json();
+
+      if (!Array.isArray(data.members)) {
+        setMembers([]);
+        return;
+      }
+
+      // ✅ กัน id ซ้ำ
+      const unique = [
+        ...new Map(data.members.map(m => [m.id, m])).values()
+      ];
+
+      setMembers(unique);
+
+    } catch (err) {
+      console.error(err);
+      setMembers([]);
+    }
+  }
+
+  // โหลดข้อความจาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem(`group_chat_${roomId}`);
     if (saved) setMessages(JSON.parse(saved));
   }, [roomId]);
 
-  // JOIN ROOM
+  // ตั้ง event socket
   useEffect(() => {
     if (!roomId) return;
-    socket.emit("groupChat:join", { roomId, user: me });
 
-    // ห้องเต็ม
     socket.on("groupChat:full", (data) => {
       alert(data.error);
       navigate("/chat/group");
     });
 
-    // มีสมาชิกเข้าห้อง
-    socket.on("groupChat:userJoin", ({ userId, name }) => {
-      loadMembers(); // ⭐ refresh รายชื่อ
+    socket.on("groupChat:joinedSelf", () => {
+      loadMembers();
+    });
+
+    socket.on("groupChat:userJoin", ({ name }) => {
       setMessages((prev) => [
         ...prev,
         { system: true, text: `${name} เข้าห้อง` },
       ]);
     });
 
-    // สมาชิกออกห้อง
-    socket.on("groupChat:userLeft", ({ userId }) => {
-      loadMembers(); // ⭐ refresh รายชื่อ
+    socket.on("groupChat:userLeft", () => {
       setMessages((prev) => [
         ...prev,
         { system: true, text: `สมาชิกออกจากห้อง` },
       ]);
     });
 
-    // ข้อความใหม่
     socket.on("groupChat:message", (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
 
-    // โหลดสมาชิกครั้งแรก
-    loadMembers();
+    // ตัวนี้คือ KEY สำคัญ
+    socket.on("groupChat:syncMembers", () => {
+      loadMembers();
+      loadFriendsStatus();
+    });
 
     return () => {
       socket.off("groupChat:full");
+      socket.off("groupChat:joinedSelf");
       socket.off("groupChat:userJoin");
       socket.off("groupChat:userLeft");
       socket.off("groupChat:message");
+      socket.off("groupChat:syncMembers"); // อย่าลืม off
     };
   }, [roomId]);
 
-  // Scroll → bottom ทุกครั้งที่มีข้อความใหม่
+  async function loadFriendsStatus() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch("http://localhost:7000/api/friends", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+
+    const map = {};
+    (data.friends || []).forEach((f) => {
+      map[f.id] = f;
+    });
+
+    setFriendMap(map);
+  }
+
+  // auto scroll
   useEffect(() => {
     localStorage.setItem(`group_chat_${roomId}`, JSON.stringify(messages));
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // โหลดสมาชิกจากฐานข้อมูล
-  async function loadMembers() {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `http://localhost:7000/api/chat/group/${roomId}/members`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      const data = await res.json();
-      setMembers(data.members);
-    } catch (err) {
-      console.error("โหลดสมาชิกห้องผิดพลาด", err);
-    }
-  }
 
   // ส่งข้อความ
   function sendMessage() {
@@ -143,7 +223,7 @@ export default function GroupChatRoom() {
     setInput("");
   }
 
-  // Upload ไฟล์
+  // Upload file
   async function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -170,7 +250,7 @@ export default function GroupChatRoom() {
     });
   }
 
-  // ออกจากห้อง
+  // Leave room
   async function leaveRoom() {
     const token = localStorage.getItem("token");
 
@@ -179,8 +259,19 @@ export default function GroupChatRoom() {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    socket.emit("groupChat:leave", { roomId, userId: me.id });
+    socket.emit("groupChat:leave", {
+      roomId,
+      userId: me.id,
+      manualLeave: true
+    });
 
+    // ลบ cache แชท
+    localStorage.removeItem(`group_chat_${roomId}`);
+
+    // สำคัญมาก: ลบ reconnect flag
+    localStorage.removeItem(`group_joined_${roomId}`);
+
+    setMessages([]);
     navigate("/chat/group");
   }
 
@@ -196,25 +287,74 @@ export default function GroupChatRoom() {
       </div>
 
       {/* MEMBER LIST */}
-      <div className="bg-white border-b px-4 py-2 flex gap-3 overflow-x-auto">
-        {members.map((m) => (
-          <div
-            key={m.id}
-            className="flex flex-col items-center cursor-pointer"
-            onClick={() => {
-              setSelectedUser(m);
-              setShowDetail(true);
-            }}
-          >
-            <img
-              src={`/uploads/avatars/${m.avatar_id}.png`}
-              className="w-10 h-10 rounded-full"
-            />
-            <p className="text-[11px] text-[#00B8E6] font-medium mt-1">
-              {m.display_name}
-            </p>
-          </div>
-        ))}
+      <div className="bg-white border-b px-6 py-3 flex items-center gap-6 overflow-x-auto">
+
+        {/* รายชื่อสมาชิก */}
+        {members.map((m) => {
+          const avatarFile =
+            Number(m.avatar_id) < 10
+              ? `avatar0${m.avatar_id}.png`
+              : `avatar${m.avatar_id}.png`;
+
+          const itemFile =
+            Number(m.item_id) < 10
+              ? `item0${m.item_id}.png`
+              : `item${m.item_id}.png`;
+
+          return (
+            <div
+              key={m.id}
+              className="flex flex-col items-center cursor-pointer"
+              onClick={() => {
+                const friendStatus = friendMap[m.id] || {};
+
+                setSelectedUser({
+                  ...m,
+
+                  // friend status
+                  isFriend: !!friendStatus?.isFriend,
+                  isIncomingRequest: !!friendStatus?.isIncomingRequest,
+                  isSentRequest: !!friendStatus?.isSentRequest,
+
+                  // room status
+                  isInRoom: true,
+                });
+                setShowDetail(true);
+              }}
+            >
+              <div className="relative w-14 h-14">
+                <div className="w-full h-full rounded-full border-2 border-gray-200 overflow-hidden relative">
+
+                  {m.item_id && (
+                    <img
+                      src={`http://localhost:7000/uploads/items/${itemFile}`}
+                      className="absolute inset-0 w-full h-full object-cover opacity-70"
+                      onError={(e) => (e.target.style.display = "none")}
+                    />
+                  )}
+
+                  <img
+                    src={`http://localhost:7000/uploads/avatars/${avatarFile}`}
+                    onError={(e) => (e.target.src = "/default-avatar.png")}
+                    className="relative w-full h-full object-contain z-10"
+                  />
+                </div>
+              </div>
+
+              <p className="text-[13px] text-[#00B8E6] font-semibold mt-1">
+                {m.display_name}
+              </p>
+            </div>
+          );
+        })}
+
+        {/* ปุ่มชวนเพื่อน (ดันไปขวาสุด) */}
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="ml-auto text-[#00B8E6] font-semibold whitespace-nowrap"
+        >
+          ชวนเพื่อน
+        </button>
       </div>
 
       {/* CHAT */}
@@ -328,18 +468,18 @@ export default function GroupChatRoom() {
           setGifSearch={setGifSearch}
           gifResults={gifResults}
           searchGIF={searchGIF}
-          sendGif={(url) =>
-            sendGif(url, (fileUrl) =>
-              socket.emit("groupChat:message", {
-                roomId,
-                sender: me.id,
-                name: me.display_name,
-                fileUrl,
-                type: "gif",
-                time: Date.now(),
-              })
-            )
-          }
+          sendGif={(gifUrl) => {
+            socket.emit("groupChat:message", {
+              roomId,
+              sender: me.id,
+              name: me.display_name,
+              fileUrl: gifUrl,
+              type: "gif",
+              time: Date.now(),
+            });
+
+            setGifModalOpen(false);
+          }}
           close={() => setGifModalOpen(false)}
         />
       )}
@@ -354,6 +494,14 @@ export default function GroupChatRoom() {
           onToggleFavorite={() => { }}
           onBlockUser={() => { }}
           onChat={() => { }}
+        />
+      )}
+      {/* INVITE MODAL */}
+      {showInviteModal && (
+        <InviteFriendModal
+          roomId={roomId}
+          members={members}   //เพิ่มบรรทัดนี้
+          onClose={() => setShowInviteModal(false)}
         />
       )}
     </div>

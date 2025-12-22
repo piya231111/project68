@@ -30,7 +30,7 @@ export default function useChatMessages(friendId) {
 
         setRoomReady(false);
 
-        // ⭐ JOIN ROOM แบบใหม่ ต้องส่ง object
+        // JOIN ROOM แบบใหม่ ต้องส่ง object
         socket.emit("join_room", {
             roomId,
             userId

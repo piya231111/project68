@@ -15,7 +15,7 @@ export default function ItemSelect() {
 useEffect(() => {
   (async () => {
     try {
-      // ✅ โหลดข้อมูล items และ me พร้อมกัน
+      // โหลดข้อมูล items และ me พร้อมกัน
       const [iRes, uRes] = await Promise.all([api.get("/items"), api.get("/me")]);
       const itemsList = iRes.data.items || [];
       const user = uRes.data.me;
@@ -23,13 +23,13 @@ useEffect(() => {
       setItems(itemsList);
       setMe(user);
 
-      // ✅ โหลดอวตาร์
+      // โหลดอวตาร์
       if (user?.avatar_id) {
         const av = await api.get(`/avatars/${user.avatar_id}`);
         setAvatar(av.data);
       }
 
-      // ✅ ตรวจว่ามี item_id เดิมไหม
+      // ตรวจว่ามี item_id เดิมไหม
       if (user?.item_id) {
         const currentItem = itemsList.find((x) => x.id === user.item_id);
 
@@ -37,7 +37,7 @@ useEffect(() => {
           // เจอใน list → ใช้เลย
           setSelected(currentItem);
         } else {
-          // ❗ ถ้าไม่เจอ (เช่นมีใน DB แต่ไม่มีใน items list)
+          // ถ้าไม่เจอ (เช่นมีใน DB แต่ไม่มีใน items list)
           // ดึงจาก API โดยตรง
           const fallback = await api.get(`/items/${user.item_id}`).catch(() => null);
           if (fallback?.data) setSelected(fallback.data);
@@ -61,7 +61,7 @@ useEffect(() => {
     setSaving(true);
     try {
       await api.patch("/auth/me", { item_id: selected.id });
-      alert("✅ เปลี่ยนไอเทมเรียบร้อย");
+      alert("เปลี่ยนไอเทมเรียบร้อย");
       navigate("/profile");
     } catch (err) {
       console.error("❌ เปลี่ยนไม่สำเร็จ:", err);
@@ -82,12 +82,12 @@ useEffect(() => {
   return (
     <main className="flex flex-1 justify-center items-center px-16 py-12 gap-16 bg-[#E9FBFF]">
       <div className="flex flex-col md:flex-row w-full max-w-7xl bg-white rounded-3xl shadow-lg border border-[#d0f6ff] overflow-hidden">
-        {/* ✅ ฝั่งซ้าย: Preview อวตาร์ + ไอเทม */}
+        {/* ฝั่งซ้าย: Preview อวตาร์ + ไอเทม */}
         <aside className="md:w-[45%] bg-[#F8FEFF] flex flex-col items-center justify-center p-12 border-b md:border-b-0 md:border-r border-[#d0f6ff]">
-          <h2 className="text-2xl font-bold mb-6 text-[#00B8E6]">🎮 ตัวละครของคุณ</h2>
+          <h2 className="text-2xl font-bold mb-6 text-[#00B8E6]">ตัวละครของคุณ</h2>
 
           <div className="relative w-[340px] h-[460px] flex justify-center items-center bg-[#f0fdff] rounded-3xl border-4 border-[#a5e8f7] shadow-xl overflow-hidden">
-            {/* ✅ แสดงไอเทม (ล่าง) */}
+            {/* แสดงไอเทม (ล่าง) */}
             {selected ? (
               <img
                 src={selected.image_url || selected.imageUrl}
@@ -102,7 +102,7 @@ useEffect(() => {
               />
             ) : null}
 
-            {/* ✅ แสดงอวตาร์ (บนสุด) */}
+            {/* แสดงอวตาร์ (บนสุด) */}
             {avatar && (
               <img
                 src={avatar.image_url || avatar.imageUrl}
@@ -112,13 +112,13 @@ useEffect(() => {
             )}
           </div>
 
-          {/* ✅ แสดงชื่อไอเทมที่เลือก */}
+          {/* แสดงชื่อไอเทมที่เลือก */}
           {selected && (
             <p className="mt-6 text-lg font-semibold text-[#00B8E6]">{selected.name}</p>
           )}
         </aside>
 
-        {/* ✅ ฝั่งขวา: เลือกไอเทม */}
+        {/* ฝั่งขวา: เลือกไอเทม */}
         <section className="flex-1 p-10">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-[#00B8E6]">เลือกไอเทมของคุณ</h1>
@@ -143,7 +143,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* ✅ Grid แสดงไอเทมทั้งหมด */}
+          {/* Grid แสดงไอเทมทั้งหมด */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
             {items.map((it) => (
               <div

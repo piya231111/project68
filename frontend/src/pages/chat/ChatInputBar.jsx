@@ -4,13 +4,13 @@ export default function ChatInputBar({
   sendTextMessage,
   sendMediaMessage,
   openGifModal,
-  roomReady,   // ⭐ เพิ่มไว้เช็คว่า join ห้องเสร็จหรือยัง
+  roomReady,   // เพิ่มไว้เช็คว่า join ห้องเสร็จหรือยัง
 }) {
   const [text, setText] = useState("");
 
   const send = () => {
     if (!text.trim()) return;
-    if (!roomReady) return;     // ⭐ ป้องกันก่อน join ห้ามส่ง
+    if (!roomReady) return;     // ป้องกันก่อน join ห้ามส่ง
 
     sendTextMessage(text);
     setText("");
@@ -18,7 +18,7 @@ export default function ChatInputBar({
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault();        // ⭐ กัน Enter ยิงหลายรอบ
+      e.preventDefault();        // กัน Enter ยิงหลายรอบ
       send();
     }
   };

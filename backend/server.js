@@ -53,14 +53,14 @@ app.use("/api/items", itemsRoutes);
 app.use("/api/friends", friendRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/upload", uploadRoutes);
 app.use("/api/chat/group", groupChatRoutes);
+app.use("/api/upload", uploadRoutes);
 
 
 // CREATE HTTP SERVER
 const server = http.createServer(app);
 
-// ⭐ SETUP WEBSOCKET HERE (ไม่มี logic ซ้ำ)
+// SETUP WEBSOCKET HERE (ไม่มี logic ซ้ำ)
 setupWebSocket(server);
 
 // START SERVER

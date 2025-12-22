@@ -18,7 +18,7 @@ async function loadUserRelationsFresh() {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => r.json());
 
-    // ⭐ ลบข้อมูลซ้ำออก (สำคัญมาก)
+    //  ลบข้อมูลซ้ำออก (สำคัญมาก)
     me.friends = [...new Set(fr.friends.map((f) => f.id))];
     me.blocked = [...new Set(bl.blocked.map((b) => b.id))];
 

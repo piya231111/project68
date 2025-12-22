@@ -18,7 +18,7 @@ export default function SearchSection({
     if (country) params.append("country", country);
     if (mode) params.append("mode", mode);
 
-    // ⭐ ใช้ selectedCategories ที่ส่งมาจาก FriendsPage
+    //  ใช้ selectedCategories ที่ส่งมาจาก FriendsPage
     if (selectedCategories && selectedCategories.length > 0) {
       selectedCategories.forEach((cat) => {
         params.append("category", cat);

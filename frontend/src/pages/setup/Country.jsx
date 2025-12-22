@@ -19,7 +19,7 @@ export default function SelectCountry() {
     // ด้านบนสุดของ component
     const location = useLocation();
 
-    // ✅ ถ้ามีประเทศอยู่แล้วให้เด้งกลับหน้า avatar (เว้นแต่กดย้อนกลับมาจาก avatar)
+    // ถ้ามีประเทศอยู่แล้วให้เด้งกลับหน้า avatar (เว้นแต่กดย้อนกลับมาจาก avatar)
     useEffect(() => {
         (async () => {
             try {
@@ -37,7 +37,7 @@ export default function SelectCountry() {
         })();
     }, [navigate, location.state]);
 
-    // ✅ ค้นหาประเทศแบบ realtime
+    // ค้นหาประเทศแบบ realtime
     const handleSearch = (value) => {
         setCountry(value);
         if (value.trim() === "") {
@@ -51,13 +51,13 @@ export default function SelectCountry() {
         setShowList(true);
     };
 
-    // ✅ เลือกประเทศจากรายการ
+    // เลือกประเทศจากรายการ
     const handleSelect = (name) => {
         setCountry(name);
         setShowList(false);
     };
 
-    // ✅ ปิด dropdown เมื่อคลิกนอกกล่อง
+    // ปิด dropdown เมื่อคลิกนอกกล่อง
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (listRef.current && !listRef.current.contains(event.target)) {
@@ -68,7 +68,7 @@ export default function SelectCountry() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // ✅ บันทึกประเทศ
+    // บันทึกประเทศ
     const submit = async () => {
         if (!country.trim()) return alert("กรุณาเลือกประเทศก่อน");
         setSaving(true);

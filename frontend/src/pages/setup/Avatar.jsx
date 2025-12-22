@@ -12,7 +12,7 @@ export default function Avatar() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ✅ pagination states
+  // pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 6; // แสดง 6 ตัวต่อหน้า
 
@@ -60,7 +60,7 @@ export default function Avatar() {
     }
   };
 
-  // ✅ คำนวณรายการที่จะโชว์ตามหน้าปัจจุบัน
+  // คำนวณรายการที่จะโชว์ตามหน้าปัจจุบัน
   const totalPages = Math.ceil(avatars.length / perPage);
   const startIdx = (currentPage - 1) * perPage;
   const currentAvatars = avatars.slice(startIdx, startIdx + perPage);
@@ -72,7 +72,7 @@ export default function Avatar() {
     >
       <div className="flex flex-col md:flex-row w-full max-w-7xl bg-white rounded-3xl shadow-lg border border-[#d0f6ff] overflow-hidden">
         
-        {/* ✅ ฝั่งซ้าย - Preview */}
+        {/* ฝั่งซ้าย - Preview */}
         <aside className="md:w-1/2 bg-[#F8FEFF] flex flex-col items-center justify-center p-10 border-b md:border-b-0 md:border-r border-[#d0f6ff]">
           <h2 className="text-2xl font-bold mb-6 text-[#00B8E6]">
             สิ่งที่คุณเลือก
@@ -99,7 +99,7 @@ export default function Avatar() {
           )}
         </aside>
 
-        {/* ✅ ฝั่งขวา - เลือกอวตาร์ */}
+        {/* ฝั่งขวา - เลือกอวตาร์ */}
         <section className="flex-1 p-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-bold text-[#00B8E6]">
@@ -132,7 +132,7 @@ export default function Avatar() {
 
           {!loading && !error && (
             <>
-              {/* ✅ Grid แสดงอวตาร์ 6 ตัวต่อหน้า */}
+              {/* Grid แสดงอวตาร์ 6 ตัวต่อหน้า */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
                 {currentAvatars.map((a) => (
                   <div
@@ -157,7 +157,7 @@ export default function Avatar() {
                 ))}
               </div>
 
-              {/* ✅ Pagination ปุ่มเปลี่ยนหน้า */}
+              {/* Pagination ปุ่มเปลี่ยนหน้า */}
               <div className="flex justify-center mt-10 gap-2">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
                   <button
