@@ -1,4 +1,4 @@
-// src/pages/GroupChatLobby.jsx
+// src/pages/chat/GroupChatLobby.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -18,7 +18,9 @@ export default function GroupChatLobby() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-  // โหลดห้องทั้งหมด
+  /* =========================
+      LOAD ROOMS
+  ========================== */
   useEffect(() => {
     loadRooms();
   }, []);
@@ -37,9 +39,9 @@ export default function GroupChatLobby() {
     }
   }
 
-  // ============================
-  // JOIN ROOM
-  // ============================
+  /* =========================
+      JOIN ROOM
+  ========================== */
   const joinRoom = async (room) => {
     if (room.type === "private") {
       setSelectedRoom(room);
@@ -73,13 +75,12 @@ export default function GroupChatLobby() {
 
     setPassword("");
     setSelectedRoom(null);
-
     navigate(`/chat/group/${selectedRoom.id}`);
   };
 
-  // ============================
-  // CREATE ROOM
-  // ============================
+  /* =========================
+      CREATE ROOM
+  ========================== */
   const createRoom = async () => {
     if (!newRoomName.trim()) return alert("กรุณากรอกชื่อห้อง");
 
@@ -100,74 +101,71 @@ export default function GroupChatLobby() {
     });
 
     const data = await res.json();
-
     if (!res.ok) return alert(data.error || "สร้างห้องไม่สำเร็จ");
 
-    // หลังสร้างห้อง → เด้งเข้าห้องทันที
     navigate(`/chat/group/${data.roomId}`);
-
     setCreateModal(false);
     setNewRoomName("");
     setRoomPassword("");
   };
 
-  // filter search
   const filteredRooms = rooms.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-[#E9FBFF] p-6">
+    <div className="min-h-screen bg-[#E9FBFF]">
+      <div className="max-w-6xl mx-auto p-6">
 
-      <h1 className="text-3xl text-[#00B8E6] font-bold mb-6">
-        เลือกห้องแชทกลุ่ม
-      </h1>
+        {/* TITLE */}
+        <h1 className="text-3xl font-bold text-[#00B8E6] mb-6">
+          เลือกห้องแชทกลุ่ม
+        </h1>
 
-      {/* CREATE ROOM BUTTON */}
-      <button
-        onClick={() => setCreateModal(true)}
-        className="bg-[#00B8E6] text-white px-5 py-3 rounded-xl font-semibold mb-6 hover:bg-[#009ccc]"
-      >
-        + สร้างห้องแชทใหม่
-      </button>
+        {/* ACTION BAR */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center max-w-4xl mb-8">
+          <button
+            onClick={() => setCreateModal(true)}
+            className="bg-[#00B8E6] text-white px-5 py-3 rounded-xl font-semibold hover:bg-[#009ccc] whitespace-nowrap"
+          >
+            สร้างห้องแชท
+          </button>
 
-      {/* SEARCH */}
-      <input
-        placeholder="ค้นหาห้องแชท..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-lg px-4 py-3 rounded-xl border border-[#b7edf7] shadow bg-white"
-      />
+          <input
+            placeholder="ค้นหาห้องแชท..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 px-4 py-3 rounded-xl border border-[#b7edf7] shadow bg-white"
+          />
+        </div>
 
-      {/* POPULAR ROOMS */}
-      <h2 className="text-xl font-semibold text-[#00B8E6] mt-8 mb-2">
-        ⭐ ห้องยอดนิยม
-      </h2>
+        {/* POPULAR ROOMS */}
+        <h2 className="text-xl font-semibold text-[#00B8E6] mb-3 flex items-center gap-2">
+          ห้องยอดนิยม
+        </h2>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {popularRooms.map((room) => (
-          <RoomCard room={room} joinRoom={joinRoom} key={room.id} />
-        ))}
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {popularRooms.map((room) => (
+            <RoomCard key={room.id} room={room} joinRoom={joinRoom} />
+          ))}
+        </div>
 
-      {/* ALL ROOMS */}
-      <h2 className="text-xl font-semibold text-[#00B8E6] mt-8 mb-2">
-        📋 ห้องทั้งหมด
-      </h2>
+        {/* ALL ROOMS */}
+        <h2 className="text-xl font-semibold text-[#00B8E6] mt-10 mb-3 flex items-center gap-2">
+          ห้องทั้งหมด
+        </h2>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
-        {filteredRooms.map((room) => (
-          <RoomCard room={room} joinRoom={joinRoom} key={room.id} />
-        ))}
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-24">
+          {filteredRooms.map((room) => (
+            <RoomCard key={room.id} room={room} joinRoom={joinRoom} />
+          ))}
+        </div>
 
-      {/* PRIVATE PASSWORD MODAL */}
-      {selectedRoom && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-sm p-6 rounded-2xl shadow-xl text-center">
-
+        {/* PRIVATE PASSWORD MODAL */}
+        {selectedRoom && (
+          <Modal>
             <h3 className="text-xl font-bold mb-4">
-              ห้อง {selectedRoom.name} ต้องการรหัสเข้าร่วม
+              ห้อง {selectedRoom.name}
             </h3>
 
             <input
@@ -175,11 +173,11 @@ export default function GroupChatLobby() {
               maxLength={4}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border rounded-xl px-4 py-3 text-center text-xl tracking-widest"
+              className="w-full border rounded-xl px-4 py-3 text-center text-xl tracking-widest mb-6"
               placeholder="••••"
             />
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3">
               <button
                 className="flex-1 bg-[#00B8E6] text-white py-2 rounded-xl"
                 onClick={submitPassword}
@@ -194,16 +192,12 @@ export default function GroupChatLobby() {
                 ยกเลิก
               </button>
             </div>
+          </Modal>
+        )}
 
-          </div>
-        </div>
-      )}
-
-      {/* CREATE ROOM MODAL */}
-      {createModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-sm p-6 rounded-2xl shadow-xl">
-
+        {/* CREATE ROOM MODAL */}
+        {createModal && (
+          <Modal>
             <h3 className="text-2xl font-bold text-[#00B8E6] mb-4">
               สร้างห้องแชทใหม่
             </h3>
@@ -215,7 +209,6 @@ export default function GroupChatLobby() {
               className="w-full border rounded-xl px-4 py-3 mb-4"
             />
 
-            <label className="font-semibold">ประเภทห้อง</label>
             <select
               value={roomType}
               onChange={(e) => setRoomType(e.target.value)}
@@ -226,17 +219,14 @@ export default function GroupChatLobby() {
             </select>
 
             {roomType === "private" && (
-              <>
-                <label className="font-semibold">รหัสเข้าห้อง (4 หลัก)</label>
-                <input
-                  type="password"
-                  maxLength={4}
-                  value={roomPassword}
-                  onChange={(e) => setRoomPassword(e.target.value)}
-                  className="w-full border rounded-xl px-4 py-3 mb-4 text-center tracking-widest"
-                  placeholder="••••"
-                />
-              </>
+              <input
+                type="password"
+                maxLength={4}
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+                className="w-full border rounded-xl px-4 py-3 mb-4 text-center tracking-widest"
+                placeholder="••••"
+              />
             )}
 
             <button
@@ -252,44 +242,59 @@ export default function GroupChatLobby() {
             >
               ยกเลิก
             </button>
+          </Modal>
+        )}
 
-          </div>
-        </div>
-      )}
-
+      </div>
     </div>
   );
 }
 
-// Room Card Component
+/* =========================
+    ROOM CARD
+========================== */
 function RoomCard({ room, joinRoom }) {
   return (
-    <div className="bg-white p-5 rounded-2xl shadow border border-[#d4f7ff]">
+    <div className="bg-white p-4 rounded-xl shadow-sm border border-[#d4f7ff] flex flex-col justify-between">
 
-      <h3 className="text-lg font-bold text-[#00B8E6]">
-        {room.name}
-      </h3>
+      <div>
+        <h3 className="text-lg font-bold text-[#00B8E6] truncate">
+          {room.name}
+        </h3>
 
-      <p className="text-gray-600 text-sm mt-1">
-        สมาชิก: {room.members} คน
-      </p>
+        <p className="text-gray-600 text-sm mt-1">
+          ทั้งหมด {room.members} คน
+        </p>
 
-      <p className="text-sm mt-1">
-        ประเภท:{" "}
-        {room.type === "public" ? (
-          <span className="text-green-600 font-semibold">Public</span>
-        ) : (
-          <span className="text-red-500 font-semibold">Private</span>
-        )}
-      </p>
+        <p className="text-sm mt-1">
+          {room.type === "public" ? (
+            <span className="text-green-600 font-semibold">สาธารณะ (Public)</span>
+          ) : (
+            <span className="text-red-500 font-semibold">ส่วนตัว (Private)</span>
+          )}
+        </p>
+      </div>
 
       <button
-        className="w-full mt-4 bg-[#00B8E6] hover:bg-[#009ccc] text-white py-2 rounded-xl font-semibold"
+        className="mt-3 bg-[#00B8E6] hover:bg-[#009ccc] text-white py-2 rounded-lg font-semibold"
         onClick={() => joinRoom(room)}
       >
         เข้าร่วม
       </button>
 
+    </div>
+  );
+}
+
+/* =========================
+    MODAL WRAPPER
+========================== */
+function Modal({ children }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white w-full max-w-sm p-6 rounded-2xl shadow-xl">
+        {children}
+      </div>
     </div>
   );
 }

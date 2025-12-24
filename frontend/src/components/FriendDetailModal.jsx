@@ -4,7 +4,9 @@ import { api } from "../api";
 
 export default function FriendDetailModal({
   friend,
+  mode = "default", // default | invite
   onClose,
+  onInviteToRoom,
   onAddFriend,
   onRemoveFriend,
   onToggleFavorite,
@@ -21,6 +23,8 @@ export default function FriendDetailModal({
   const [avatar, setAvatar] = useState(null);
   const [item, setItem] = useState(null);
   const [isOnline, setIsOnline] = useState(friend.is_online);
+  const isInRoom = friend?.isInRoom === true;
+  const isFriend = friend?.isFriend === true;
 
   useEffect(() => {
     if (!friend) return;
@@ -132,82 +136,99 @@ export default function FriendDetailModal({
         ) : (
           <div className="mt-8 flex flex-col gap-3">
 
-            {/* ✅ อยู่ในห้องแล้ว */}
-            {friend.isInRoom ? (
-              <div className="text-center text-green-600 font-semibold py-3 rounded-xl bg-green-50">
-                เพื่อนของคุณอยู่ในห้องนี้แล้ว
-              </div>
-
-            ) : friend.isIncomingRequest ? (
-              <>
+            {/* =====================
+            MODE: INVITE
+            ====================== */}
+            {mode === "invite" && (
+              friend.isInRoom ? (
+                <div className="text-center text-green-600 font-semibold py-3 rounded-xl bg-green-50">
+                  เพื่อนของคุณอยู่ในห้องนี้แล้ว
+                </div>
+              ) : (
                 <button
-                  onClick={() => onAcceptRequest?.(friend.id)}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold"
+                  onClick={() => onInviteToRoom?.(friend.id)}
+                  className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold"
                 >
-                  ยอมรับคำขอ
+                  เชิญเข้าห้องแชท
                 </button>
-
-                <button
-                  onClick={() => onDeclineRequest?.(friend.id)}
-                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
-                >
-                  ปฏิเสธคำขอ
-                </button>
-              </>
-
-            ) : friend.isFriend ? (
-              <>
-                <button
-                  onClick={() => onChat?.(friend.id)}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold"
-                >
-                  แชท
-                </button>
-
-                <button
-                  onClick={() => onToggleFavorite?.(friend.id)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-white px-6 py-3 rounded-xl font-semibold"
-                >
-                  {friend.is_favorite ? "เอาดาวออก" : "ปักดาวเพื่อน"}
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (window.confirm(`ต้องการลบเพื่อน ${friend.display_name}?`)) {
-                      onRemoveFriend?.(friend.id);
-                    }
-                  }}
-                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
-                >
-                  ลบเพื่อน
-                </button>
-              </>
-
-            ) : (
-              <>
-                {!friend.isSentRequest ? (
-                  <button
-                    onClick={() => onAddFriend?.(friend.id)}
-                    className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold"
-                  >
-                    เพิ่มเพื่อน
-                  </button>
-                ) : (
-                  <p className="text-center text-gray-500">📨 ส่งคำขอแล้ว</p>
-                )}
-
-                <button
-                  onClick={() => {
-                    onBlockUser?.(friend.id);
-                    onClose();
-                  }}
-                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
-                >
-                  บล็อคผู้ใช้
-                </button>
-              </>
+              )
             )}
 
+            {/* =====================
+            MODE: DEFAULT
+            ====================== */}
+            {mode === "default" && (
+              <>
+                {/* อยู่ในห้องแชทแล้ว */}
+                {isInRoom && isFriend? (
+                  <div className="text-center text-green-600 font-semibold py-3 rounded-xl bg-green-50">
+                    เพื่อนของคุณอยู่ในห้องนี้แล้ว
+                  </div>
+                ) : friend.isIncomingRequest ? (
+                  <>
+                    <button
+                      onClick={() => onAcceptRequest?.(friend.id)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      ยอมรับคำขอ
+                    </button>
+
+                    <button
+                      onClick={() => onDeclineRequest?.(friend.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      ปฏิเสธคำขอ
+                    </button>
+                  </>
+                ) : friend.isFriend ? (
+                  <>
+                    <button
+                      onClick={() => onChat?.(friend.id)}
+                      className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      แชท
+                    </button>
+
+                    <button
+                      onClick={() => onToggleFavorite?.(friend.id)}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      {friend.is_favorite ? "เอาดาวออก" : "ปักดาวเพื่อน"}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`ต้องการลบเพื่อน ${friend.display_name}?`)) {
+                          onRemoveFriend?.(friend.id);
+                        }
+                      }}
+                      className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      ลบเพื่อน
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => onAddFriend?.(friend.id)}
+                      className="bg-[#00B8E6] hover:bg-[#009ecc] text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      เพิ่มเพื่อน
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onBlockUser?.(friend.id);
+                        onClose();
+                      }}
+                      className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
+                    >
+                      บล็อคผู้ใช้
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

@@ -132,6 +132,34 @@ export default function GroupChatRoom() {
     }
   }
 
+  async function addFriend(friendId) {
+    const token = localStorage.getItem("token");
+
+    await fetch(`http://localhost:7000/api/friends/request/${friendId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    await loadFriendsStatus();
+    alert("ส่งคำขอเป็นเพื่อนแล้ว");
+  }
+
+  async function blockUser(friendId) {
+    const token = localStorage.getItem("token");
+
+    await fetch(`http://localhost:7000/api/friends/${friendId}/block`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    await loadFriendsStatus();
+    alert("บล็อคผู้ใช้แล้ว");
+  }
+
   // โหลดข้อความจาก localStorage
   useEffect(() => {
     const saved = localStorage.getItem(`group_chat_${roomId}`);
@@ -306,19 +334,16 @@ export default function GroupChatRoom() {
               key={m.id}
               className="flex flex-col items-center cursor-pointer"
               onClick={() => {
-                const friendStatus = friendMap[m.id] || {};
+                const friendStatus = friendMap[m.id]; // ❗ ไม่ต้อง || {}
 
                 setSelectedUser({
                   ...m,
-
-                  // friend status
-                  isFriend: !!friendStatus?.isFriend,
-                  isIncomingRequest: !!friendStatus?.isIncomingRequest,
-                  isSentRequest: !!friendStatus?.isSentRequest,
-
-                  // room status
+                  isFriend: !!friendStatus,
+                  isIncomingRequest: false,
+                  isSentRequest: false,
                   isInRoom: true,
                 });
+
                 setShowDetail(true);
               }}
             >
@@ -488,12 +513,29 @@ export default function GroupChatRoom() {
       {showDetail && selectedUser && (
         <FriendDetailModal
           friend={selectedUser}
-          onClose={() => setShowDetail(false)}
-          onAddFriend={() => { }}
-          onRemoveFriend={() => { }}
-          onToggleFavorite={() => { }}
-          onBlockUser={() => { }}
-          onChat={() => { }}
+
+          onClose={() => {
+            setShowDetail(false);
+            setSelectedUser(null);
+          }}
+
+          onAddFriend={async (friendId) => {
+            await addFriend(friendId);
+            setShowDetail(false);
+            setSelectedUser(null);
+          }}
+
+          onBlockUser={async (friendId) => {
+            await blockUser(friendId);
+            setShowDetail(false);
+            setSelectedUser(null);
+          }}
+
+          onChat={(friendId) => {
+            setShowDetail(false);
+            setSelectedUser(null);
+            navigate(`/chat/${friendId}`);
+          }}
         />
       )}
       {/* INVITE MODAL */}

@@ -6,15 +6,19 @@ import { pool } from "../db.js";
 ================================ */
 export async function getAllGroupRooms(req, res) {
     try {
+        // ห้องทั้งหมด
         const rooms = await pool.query(`
       SELECT id, name, type, members, created_at
       FROM group_rooms
       ORDER BY created_at DESC
     `);
 
+        // ⭐ ห้องยอดนิยม (Public + สมาชิกเยอะสุด 5 ห้อง)
         const popular = await pool.query(`
       SELECT id, name, type, members, created_at
       FROM group_rooms
+      WHERE type = 'public'
+        AND members > 0
       ORDER BY members DESC
       LIMIT 5
     `);
@@ -114,7 +118,11 @@ export async function joinPrivateGroupRoom(req, res) {
             );
 
             await pool.query(
-                `UPDATE group_rooms SET members = members + 1 WHERE id = $1`,
+                `UPDATE group_rooms
+                 SET members = (
+                    SELECT COUNT(*) FROM group_room_members WHERE room_id = $1
+                )
+                WHERE id = $1`,
                 [roomId]
             );
         }
@@ -169,7 +177,7 @@ export async function createGroupRoom(req, res) {
 
         return res.json({
             ok: true,
-            roomId: room.id,  
+            roomId: room.id,
             room,
         });
 
@@ -210,7 +218,11 @@ export async function joinPublicGroupRoom(req, res) {
             );
 
             await pool.query(
-                `UPDATE group_rooms SET members = members + 1 WHERE id = $1`,
+                `UPDATE group_rooms
+                 SET members = (
+                    SELECT COUNT(*) FROM group_room_members WHERE room_id = $1
+                )
+                WHERE id = $1`,
                 [roomId]
             );
         }

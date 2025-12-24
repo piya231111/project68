@@ -6,7 +6,8 @@ import {
     markNotificationRead,
     deleteNotification,    
     clearNotifications,
-    sendGroupInvite   
+    sendGroupInvite,
+    checkGroupRoomExists  
 } from "../controllers/notificationController.js";
 
 const router = express.Router();
@@ -23,5 +24,7 @@ router.delete("/notifications/:id", authRequired, deleteNotification);
 router.delete("/notifications", authRequired, clearNotifications);
 
 router.post("/invite-group", authRequired, sendGroupInvite);
+router.get("/chat/group/:roomId/exists", authRequired, checkGroupRoomExists);
+
 
 export default router;

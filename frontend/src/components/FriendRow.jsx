@@ -126,7 +126,7 @@ export default function FriendRow({
         {!isFriend && !isIncomingRequest && (
           <div onClick={(e) => e.stopPropagation()}>
             {isSentRequest ? (
-              <span className="text-gray-500 italic">📨 ส่งคำขอแล้ว</span>
+              <span className="text-gray-500 italic">ส่งคำขอแล้ว ...</span>
             ) : (
               <button
                 onClick={() => onSendRequest(friend.id)}

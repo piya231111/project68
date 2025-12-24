@@ -144,3 +144,18 @@ export async function sendGroupInvite(req, res) {
     res.status(500).json({ error: "ส่งคำเชิญไม่สำเร็จ" });
   }
 }
+
+export async function checkGroupRoomExists(req, res) {
+  const { roomId } = req.params;
+
+  const result = await pool.query(
+    `SELECT id FROM group_rooms WHERE id = $1`,
+    [roomId]
+  );
+
+  if (result.rowCount === 0) {
+    return res.status(404).json({ exists: false });
+  }
+
+  res.json({ exists: true });
+}

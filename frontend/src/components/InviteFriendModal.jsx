@@ -106,10 +106,18 @@ export default function InviteFriendModal({ roomId, onClose }) {
                                         onClick={() => {
                                             setSelectedUser({
                                                 ...f,
-                                                isInRoom: memberIds.includes(f.id), // สำคัญ
+
+                                                // บอกให้ modal รู้ว่า "คนนี้เป็นเพื่อนแล้ว"
+                                                isFriend: true,
+                                                isIncomingRequest: false,
+                                                isSentRequest: false,
+
+                                                // สถานะห้อง
+                                                isInRoom: memberIds.includes(f.id),
                                             });
                                             setShowDetail(true);
                                         }}
+
                                     >
                                         <div className="relative w-12 h-12">
                                             {/* ITEM */}
@@ -167,12 +175,9 @@ export default function InviteFriendModal({ roomId, onClose }) {
             {showDetail && selectedUser && (
                 <FriendDetailModal
                     friend={selectedUser}
+                    mode="invite"
                     onClose={() => setShowDetail(false)}
-                    onAddFriend={() => { }}
-                    onRemoveFriend={() => { }}
-                    onToggleFavorite={() => { }}
-                    onBlockUser={() => { }}
-                    onChat={() => { }}
+                    onInviteToRoom={(friendId) => sendInvite(friendId)}
                 />
             )}
         </>

@@ -13,17 +13,53 @@ export default function Notifications() {
   const load = async () => {
     const res = await api.get("/notifications");
     setList(res.data.notifications);
-
-    // mark read
-    res.data.notifications.forEach((n) => {
-      if (!n.is_read) api.post(`/notifications/${n.id}/read`);
-    });
   };
 
-  const handleClick = (n) => {
-    if (n.type === "chat_message") navigate(`/chat/${n.friend_id}`);
-    if (n.type === "friend_request") navigate("/friends");
-    if (n.type === "group_invite") navigate(`/chat/group/${n.group_room_id}`);
+  const handleClick = async (n) => {
+    try {
+      // mark read เฉพาะอันที่กด
+      if (!n.is_read) {
+        await api.post(`/notifications/${n.id}/read`);
+        setList((prev) =>
+          prev.map((x) =>
+            x.id === n.id ? { ...x, is_read: true } : x
+          )
+        );
+      }
+
+      if (n.type === "chat_message") {
+        navigate(`/chat/${n.friend_id}`);
+        return;
+      }
+
+      if (n.type === "friend_request") {
+        navigate("/friends");
+        return;
+      }
+
+      if (n.type === "group_invite") {
+        const res = await api.get(
+          `/chat/group/${n.group_room_id}/exists`
+        );
+
+        if (!res.data.exists) {
+          alert("ห้องแชทนี้ถูกลบไปแล้ว");
+
+          await api.delete(`/notifications/${n.id}`);
+          setList((prev) => prev.filter((x) => x.id !== n.id));
+          return;
+        }
+
+        navigate(`/chat/group/${n.group_room_id}`);
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("ไม่สามารถเข้าห้องแชทได้ (ห้องอาจถูกลบแล้ว)");
+
+      await api.delete(`/notifications/${n.id}`);
+      setList((prev) => prev.filter((x) => x.id !== n.id));
+    }
   };
 
   const deleteItem = async (id) => {

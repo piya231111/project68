@@ -58,8 +58,11 @@ export function setupWebSocket(server) {
 
       socket.join(roomId);
 
-      if (!roomMembers.has(roomId)) roomMembers.set(roomId, new Set());
-      roomMembers.get(roomId).add(socket.id);
+      if (!roomMembers.has(roomId)) {
+        roomMembers.set(roomId, new Set());
+      }
+
+      roomMembers.get(roomId).add(String(userId));
 
       io.to(socket.id).emit("room_joined", roomId);
     });
@@ -110,10 +113,10 @@ export function setupWebSocket(server) {
         const receiverId = sender_id === user1_id ? user2_id : user1_id;
 
         const members = roomMembers.get(room_id);
-        const receiverSocketId = onlineUsers.get(String(receiverId));
 
+        // ✅ เช็กว่า "ผู้รับอยู่ในห้องนี้จริงไหม"
         const isReceiverInRoom =
-          members && receiverSocketId && members.has(receiverSocketId);
+          members && members.has(String(receiverId));
 
         if (!isReceiverInRoom) {
           const senderName = (
@@ -125,9 +128,9 @@ export function setupWebSocket(server) {
 
           await pool.query(
             `
-            INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
-            VALUES ($1, 'chat_message', $2, $3, $4, false)
-          `,
+              INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
+              VALUES ($1, 'chat_message', $2, $3, $4, false)
+            `,
             [
               receiverId,
               "ข้อความใหม่จากเพื่อน",
