@@ -18,7 +18,7 @@ export default function GroupChatRoom() {
   const [showDetail, setShowDetail] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [friendMap, setFriendMap] = useState({});
-
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const me = JSON.parse(localStorage.getItem("user"));
   const bottomRef = useRef(null);
@@ -119,7 +119,7 @@ export default function GroupChatRoom() {
         return;
       }
 
-      // ✅ กัน id ซ้ำ
+      // กัน id ซ้ำ
       const unique = [
         ...new Map(data.members.map(m => [m.id, m])).values()
       ];
@@ -251,6 +251,10 @@ export default function GroupChatRoom() {
     setInput("");
   }
 
+  function getMemberById(userId) {
+    return members.find((m) => m.id === userId);
+  }
+
   // Upload file
   async function handleFileUpload(e) {
     const file = e.target.files[0];
@@ -309,7 +313,11 @@ export default function GroupChatRoom() {
       {/* HEADER */}
       <div className="flex justify-between items-center px-6 py-4 bg-white shadow-md">
         <h1 className="text-xl font-bold text-[#00B8E6]">ห้องแชทกลุ่ม</h1>
-        <button onClick={leaveRoom} className="text-red-500 font-semibold">
+
+        <button
+          onClick={() => setShowLeaveConfirm(true)}
+          className="text-red-500 font-semibold hover:underline"
+        >
           ออกจากห้อง
         </button>
       </div>
@@ -393,49 +401,102 @@ export default function GroupChatRoom() {
             );
 
           const isMine = msg.sender === me.id;
+          const senderUser = isMine ? me : getMemberById(msg.sender);
+
+          const avatarFile =
+            senderUser?.avatar_id < 10
+              ? `avatar0${senderUser?.avatar_id}.png`
+              : `avatar${senderUser?.avatar_id}.png`;
+
+          const itemFile =
+            senderUser?.item_id < 10
+              ? `item0${senderUser?.item_id}.png`
+              : `item${senderUser?.item_id}.png`;
 
           return (
             <div
               key={i}
-              className={`flex flex-col ${isMine ? "items-end" : "items-start"
+              className={`flex items-end gap-3 ${isMine ? "justify-end" : "justify-start"
                 }`}
             >
+              {/* 👤 AVATAR ซ้าย (คนอื่น) */}
               {!isMine && (
-                <p className="text-[11px] text-blue-500 font-medium mb-1 ml-1">
-                  {msg.name}
-                </p>
-              )}
-
-              {msg.fileUrl ? (
-                msg.type === "video" ? (
-                  <video
-                    src={msg.fileUrl}
-                    controls
-                    className="max-w-[260px] rounded-lg shadow"
-                  />
-                ) : (
+                <div className="relative w-14 h-14 shrink-0 rounded-full overflow-hidden border bg-white shadow">
+                  {senderUser?.item_id && (
+                    <img
+                      src={`http://localhost:7000/uploads/items/${itemFile}`}
+                      className="absolute inset-0 w-full h-full object-contain
+                           scale-[1.08] translate-y-[3%] opacity-70 z-0"
+                    />
+                  )}
                   <img
-                    src={msg.fileUrl}
-                    className="max-w-[260px] rounded-lg shadow"
+                    src={`http://localhost:7000/uploads/avatars/${avatarFile}`}
+                    className="absolute inset-0 w-full h-full object-contain
+                         scale-[1.05] translate-y-[2%] z-10"
                   />
-                )
-              ) : (
-                <div
-                  className={`px-4 py-2 rounded-2xl shadow text-sm max-w-[260px] ${isMine
-                    ? "bg-[#00B8E6] text-white rounded-br-none"
-                    : "bg-white border text-gray-700 rounded-bl-none"
-                    }`}
-                >
-                  {msg.text}
                 </div>
               )}
 
-              <p className="text-[10px] text-gray-400 mt-1">
-                {new Date(msg.time).toLocaleTimeString("th-TH", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
+              {/* 💬 MESSAGE */}
+              <div
+                className={`flex flex-col max-w-[260px] ${isMine ? "items-end" : "items-start"
+                  }`}
+              >
+                {!isMine && (
+                  <p className="text-[11px] text-blue-500 font-medium ml-1 mb-1">
+                    {msg.name}
+                  </p>
+                )}
+
+                {msg.fileUrl ? (
+                  msg.type === "video" ? (
+                    <video
+                      src={msg.fileUrl}
+                      controls
+                      className="rounded-2xl shadow max-w-[260px]"
+                    />
+                  ) : (
+                    <img
+                      src={msg.fileUrl}
+                      className="rounded-2xl shadow max-w-[260px]"
+                    />
+                  )
+                ) : (
+                  <div
+                    className={`px-4 py-2 rounded-2xl shadow text-sm ${isMine
+                      ? "bg-[#00B8E6] text-white rounded-br-md"
+                      : "bg-white border text-gray-700 rounded-bl-md"
+                      }`}
+                  >
+                    {msg.text}
+                  </div>
+                )}
+
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {new Date(msg.time).toLocaleTimeString("th-TH", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+
+              {/* 👤 AVATAR ขวา (เรา) */}
+              {isMine && (
+                <div className="relative w-14 h-14 shrink-0 rounded-full overflow-hidden border bg-white shadow">
+                  {me.item_id && (
+                    <img
+                      src={`http://localhost:7000/uploads/items/${itemFile}`}
+                      className="absolute inset-0 w-full h-full object-contain
+                           scale-[1.08] translate-y-[3%] opacity-70 z-0"
+                    />
+                  )}
+                  <img
+                    src={`http://localhost:7000/uploads/avatars/${avatarFile}`}
+                    className="absolute inset-0 w-full h-full object-contain
+                         scale-[1.05] translate-y-[2%] z-10"
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -545,6 +606,38 @@ export default function GroupChatRoom() {
           members={members}   //เพิ่มบรรทัดนี้
           onClose={() => setShowInviteModal(false)}
         />
+      )}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-lg w-[320px] p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              ยืนยันการออกจากห้อง
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-6">
+              คุณต้องการออกจากห้องแชทกลุ่มนี้ใช่หรือไม่?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                ยกเลิก
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowLeaveConfirm(false);
+                  leaveRoom();
+                }}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+              >
+                ออกจากห้อง
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

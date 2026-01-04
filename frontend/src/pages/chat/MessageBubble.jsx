@@ -1,84 +1,111 @@
 import React from "react";
 
+const BACKEND_URL = "http://localhost:7000";
+
 export default function MessageBubble({ message }) {
   const me = JSON.parse(localStorage.getItem("user"));
   const userId = me?.id;
 
   const isMine = String(message.sender_id) === String(userId);
 
-  const base =
-    "max-w-xs px-4 py-2 rounded-2xl shadow";
-  const myBubble = "bg-[#00B8E6] text-white rounded-br-none";
-  const otherBubble = "bg-white text-gray-800 rounded-bl-none border";
-
-  let time = "";
-  try {
-    time = new Date(message.created_at).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {}
+  const time = new Date(message.created_at).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   const isMedia =
     message.type === "image" ||
     message.type === "gif" ||
     message.type === "video";
 
+  const avatar = message.avatar_url
+    ? `${BACKEND_URL}${message.avatar_url}`
+    : "/default-avatar.png";
+
+  const item = message.item_url
+    ? `${BACKEND_URL}${message.item_url}`
+    : null;
+
+  const mediaUrl = message.file_url
+    ? message.file_url.startsWith("http")
+      ? message.file_url
+      : `${BACKEND_URL}${message.file_url}`
+    : null;
+
   return (
     <div
-      className={`flex flex-col my-2 ${
-        isMine ? "items-end" : "items-start"
-      }`}
-    >
-      {/* ---------- ชื่อผู้ส่ง (เฉพาะเพื่อน) ---------- */}
-      {!isMine && (
-        <p className="text-[11px] text-gray-500 font-medium mb-1 ml-1">
-          {message.sender_name}
-        </p>
-      )}
-
-      {/* ---------------- MEDIA (ไม่มี Bubble) ---------------- */}
-      {isMedia && (
-        <div className="my-1">
-          {message.type === "image" && (
-            <img
-              src={message.file_url}
-              className="max-w-[260px] rounded-lg shadow"
-            />
-          )}
-
-          {message.type === "gif" && (
-            <img
-              src={message.file_url}
-              className="max-w-[260px] rounded-lg shadow"
-            />
-          )}
-
-          {message.type === "video" && (
-            <video
-              src={message.file_url}
-              controls
-              className="max-w-[260px] rounded-lg shadow"
-            />
-          )}
-        </div>
-      )}
-
-      {/* ---------------- TEXT BUBBLE ---------------- */}
-      {!isMedia && (
-        <div className={`${base} ${isMine ? myBubble : otherBubble}`}>
-          <p>{message.text}</p>
-        </div>
-      )}
-
-      {/* ---------------- TIME ---------------- */}
-      <p
-        className={`text-[10px] text-gray-400 mt-1 ${
-          isMine ? "text-right" : "text-left"
+      className={`flex my-4 ${isMine ? "justify-end" : "justify-start"
         }`}
+    >
+      <div
+        className={`flex gap-2 ${isMine ? "flex-row-reverse items-end" : "items-start"
+          }`}
       >
-        {time}
-      </p>
+        <div className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden border shadow bg-white">
+
+          {/* ITEM : ชั้นหลัง (พอดีวง ไม่เล็กเกิน) */}
+          {item && (
+            <img
+              src={item}
+              alt="item"
+              className="absolute inset-0 w-full h-full object-contain scale-[1.08] translate-y-[3%] opacity-75 z-0 pointer-events-none"
+            />
+          )}
+
+          {/* AVATAR : เต็มพอดีวง */}
+          <img
+            src={avatar}
+            onError={(e) => (e.target.src = '/default-avatar.png')}
+            className="absolute inset-0 w-full h-full object-contain scale-[1.05] translate-y-[2%] z-10"
+          />
+        </div>
+
+        {/* ===== MESSAGE BLOCK ===== */}
+        <div
+          className={`flex flex-col max-w-xs ${isMine ? "items-end" : "items-start"
+            }`}
+        >
+          {/* NAME */}
+          <p className="text-[11px] text-gray-500 font-medium mb-1">
+            {isMine ? me?.username : message.sender_name}
+          </p>
+
+          {/* MEDIA */}
+          {isMedia && mediaUrl && (
+            <div className="my-1">
+              {message.type === "video" ? (
+                <video
+                  src={mediaUrl}
+                  controls
+                  className="max-w-[260px] rounded-2xl shadow"
+                />
+              ) : (
+                <img
+                  src={mediaUrl}
+                  className="max-w-[260px] rounded-2xl shadow"
+                />
+              )}
+            </div>
+          )}
+
+          {/* TEXT */}
+          {!isMedia && (
+            <div
+              className={`px-4 py-2 rounded-2xl shadow text-sm ${isMine
+                ? "bg-[#00B8E6] text-white rounded-br-md"
+                : "bg-white border text-gray-800 rounded-bl-md"
+                }`}
+            >
+              {message.text}
+            </div>
+          )}
+
+          {/* TIME */}
+          <span className="text-[10px] text-gray-400 mt-1">
+            {time}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

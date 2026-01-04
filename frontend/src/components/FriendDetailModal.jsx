@@ -160,9 +160,9 @@ export default function FriendDetailModal({
             {mode === "default" && (
               <>
                 {/* อยู่ในห้องแชทแล้ว */}
-                {isInRoom && isFriend? (
+                {isInRoom && isFriend ? (
                   <div className="text-center text-green-600 font-semibold py-3 rounded-xl bg-green-50">
-                    เพื่อนของคุณอยู่ในห้องนี้แล้ว
+                    เพื่อนกับคุณ
                   </div>
                 ) : friend.isIncomingRequest ? (
                   <>

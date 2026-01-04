@@ -4,14 +4,6 @@ import { authRequired } from "../middleware/authMiddleware.js";
 
 import { getOrCreateRoom } from "../controllers/chatController.js";
 import { getMessages, sendMessage } from "../controllers/messageController.js";
-import {
-  getAllGroupRooms,
-  joinPrivateGroupRoom,
-  getGroupRoomMembers, 
-  createGroupRoom, 
-  joinPublicGroupRoom,
-  leaveGroupRoom
-} from "../controllers/groupChatController.js";
 
 const router = express.Router();
 
