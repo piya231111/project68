@@ -30,7 +30,6 @@ export default function useChatMessages(friendId) {
 
         setRoomReady(false);
 
-        // JOIN ROOM แบบใหม่ ต้องส่ง object
         socket.emit("join_room", {
             roomId,
             userId
@@ -42,19 +41,16 @@ export default function useChatMessages(friendId) {
             }
         });
 
-        // โหลดประวัติแชท
         api.get(`/chat/room/${roomId}`).then((res) => {
             setMessages(Array.isArray(res.data.messages) ? res.data.messages : []);
         });
 
-        // ข้อความใหม่
         const handleReceive = (msg) => {
             if (String(msg.room_id) !== String(roomId)) return;
             setMessages(prev => [...prev, msg]);
         };
         socket.on("receive_message", handleReceive);
 
-        // ข้อความถูกแก้โดย AI
         const handleUpdate = (update) => {
             setMessages(prev =>
                 prev.map(m => m.id === update.id ? { ...m, text: update.text } : m)
@@ -62,7 +58,13 @@ export default function useChatMessages(friendId) {
         };
         socket.on("message_updated", handleUpdate);
 
+        // ✅ ตรงนี้คือหัวใจ
         return () => {
+            socket.emit("leave_room", {
+                roomId,
+                userId
+            });
+
             socket.off("room_joined");
             socket.off("receive_message", handleReceive);
             socket.off("message_updated", handleUpdate);

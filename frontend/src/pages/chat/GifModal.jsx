@@ -56,7 +56,7 @@ export default function GifModal({
                 onClick={() => sendGif(gif.images.fixed_height.url)}
                 className="w-full rounded-lg cursor-pointer hover:opacity-80"
               />
-            ))
+            ))   
           )}
         </div>
 

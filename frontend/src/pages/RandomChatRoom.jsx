@@ -7,6 +7,18 @@ import GifModal from "./chat/GifModal";
 import useGifSearch from "./chat/hooks/useGifSearchRandom";
 import FriendDetailModal from "../components/FriendDetailModal";
 
+const BACKEND = "http://localhost:7000";
+
+const avatarSrc = (id) => {
+    if (!id) return "/default-avatar.png";
+    return `${BACKEND}/uploads/avatars/avatar${String(id).padStart(2, "0")}.png`;
+};
+
+const itemSrc = (id) => {
+    if (!id) return null;
+    return `${BACKEND}/uploads/items/item${String(id).padStart(2, "0")}.png`;
+};
+
 export default function RandomChatRoom() {
     const { roomId } = useParams();
     const navigate = useNavigate();
@@ -15,6 +27,7 @@ export default function RandomChatRoom() {
     const [input, setInput] = useState("");
     const [partner, setPartner] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
+    const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
     const me = JSON.parse(localStorage.getItem("user"));
     const bottomRef = useRef(null);
@@ -168,31 +181,29 @@ export default function RandomChatRoom() {
         if (!file) return;
 
         const token = localStorage.getItem("token");
-        if (!token) return alert("Token หมดอายุ กรุณาเข้าสู่ระบบใหม่");
-
         const form = new FormData();
         form.append("file", file);
 
-        try {
-            const res = await fetch("http://localhost:7000/api/upload/chat-file", {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-                body: form,
-            });
+        const res = await fetch("http://localhost:7000/api/upload/chat-file", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: form,
+        });
 
-            const data = await res.json();
+        const data = await res.json();
 
-            socket.emit("randomChat:message", {
-                roomId,
-                sender: me.id,
-                fileUrl: data.url,
-                type: "image",
-                time: Date.now(),
-            });
+        // จุดสำคัญ
+        const fileType = file.type.startsWith("video")
+            ? "video"
+            : "image";
 
-        } catch {
-            alert("อัปโหลดไฟล์ไม่สำเร็จ");
-        }
+        socket.emit("randomChat:message", {
+            roomId,
+            sender: me.id,
+            fileUrl: data.url,
+            type: fileType,   // video / image
+            time: Date.now(),
+        });
     };
 
     // ===============================
@@ -350,8 +361,44 @@ export default function RandomChatRoom() {
 
             {/* HEADER */}
             <div className="flex justify-between items-center px-6 py-4 bg-white shadow-md">
-                <h1 className="text-xl font-bold text-[#00B8E6]">ห้องแชทสุ่ม</h1>
-                <button onClick={leaveRoom} className="text-red-500 font-semibold">
+                <div className="flex items-center gap-3">
+                    {partner && (
+                        <div
+                            className="relative w-20 h-20 rounded-full overflow-hidden
+               border bg-white flex-shrink-0"
+                        >
+                            {/* ITEM : ซ้อนหลัง */}
+                            {partner.item_id && (
+                                <img
+                                    src={itemSrc(partner.item_id)}
+                                    alt="item"
+                                    className="absolute inset-0 w-full h-full object-contain z-10 scale-[1.05] translate-y-[2%] pointer-events-none"
+                                />
+                            )}
+
+                            {/* AVATAR */}
+                            <img
+                                src={avatarSrc(partner.avatar_id)}
+                                alt="avatar"
+                                className=" absolute inset-0 w-full h-full object-contain z-20"
+                            />
+                        </div>
+                    )}
+
+                    <div>
+                        <p className="font-semibold text-gray-800">
+                            {partner?.display_name || "กำลังจับคู่..."}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                            ห้องแชทสุ่ม
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => setShowLeaveConfirm(true)}
+                    className="text-red-500 font-semibold hover:underline"
+                >
                     ออกจากห้อง
                 </button>
             </div>
@@ -378,36 +425,76 @@ export default function RandomChatRoom() {
                     return (
                         <div
                             key={i}
-                            className={`flex flex-col my-2 ${isMine ? "items-end" : "items-start"}`}
+                            className={`flex items-end gap-3 ${isMine ? "justify-end" : "justify-start"}`}
                         >
+                            {/* ===== AVATAR ซ้าย (คู่สนทนา) ===== */}
                             {!isMine && partner && (
-                                <p
-                                    className="text-[11px] text-blue-500 font-medium mb-1 ml-1 cursor-pointer hover:underline"
-                                    onClick={() => setShowDetail(true)}
-                                >
-                                    {msg.senderName || partner?.display_name || "คู่สนทนา"}
-                                </p>
-                            )}
-
-                            {isMedia ? (
-                                <div className="my-1">
-                                    {msg.type !== "video" ? (
-                                        <img src={msg.fileUrl} className="max-w-[260px] rounded-lg shadow" />
-                                    ) : (
-                                        <video src={msg.fileUrl} controls className="max-w-[260px] rounded-lg shadow" />
+                                <div className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden border bg-white shadow">
+                                    {partner.item_id && (
+                                        <img
+                                            src={itemSrc(partner.item_id)}
+                                            className="absolute inset-0 w-full h-full object-contain
+                     scale-[1.08] translate-y-[3%] opacity-70 z-0"
+                                        />
                                     )}
-                                </div>
-                            ) : (
-                                <div className={`${base} ${isMine ? myBubble : otherBubble}`}>
-                                    <p>{msg.text}</p>
+                                    <img
+                                        src={avatarSrc(partner.avatar_id)}
+                                        className="absolute inset-0 w-full h-full object-contain
+                   scale-[1.05] translate-y-[2%] z-10"
+                                    />
                                 </div>
                             )}
 
-                            <p
-                                className={`text-[10px] text-gray-400 mt-1 ${isMine ? "text-right" : "text-left"}`}
-                            >
-                                {time}
-                            </p>
+                            {/* ===== MESSAGE ===== */}
+                            <div className={`flex flex-col max-w-[260px] ${isMine ? "items-end" : "items-start"}`}>
+                                {!isMine && (
+                                    <p
+                                        className="text-[11px] text-blue-500 font-medium ml-1 mb-1 cursor-pointer hover:underline"
+                                        onClick={() => setShowDetail(true)}
+                                    >
+                                        {partner.display_name}
+                                    </p>
+                                )}
+
+                                {isMedia ? (
+                                    msg.type === "video" ? (
+                                        <video src={msg.fileUrl} controls className="rounded-2xl shadow max-w-[260px]" />
+                                    ) : (
+                                        <img src={msg.fileUrl} className="rounded-2xl shadow max-w-[260px]" />
+                                    )
+                                ) : (
+                                    <div
+                                        className={`px-4 py-2 rounded-2xl shadow text-sm ${isMine
+                                            ? "bg-[#00B8E6] text-white rounded-br-md"
+                                            : "bg-white border text-gray-700 rounded-bl-md"
+                                            }`}
+                                    >
+                                        {msg.text}
+                                    </div>
+                                )}
+
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                    {time}
+                                </p>
+                            </div>
+
+                            {/* ===== AVATAR ขวา (เรา) ===== */}
+                            {isMine && (
+                                <div className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden border bg-white shadow">
+                                    {me.item_id && (
+                                        <img
+                                            src={itemSrc(me.item_id)}
+                                            className="absolute inset-0 w-full h-full object-contain
+                     scale-[1.08] translate-y-[3%] opacity-70 z-0"
+                                        />
+                                    )}
+                                    <img
+                                        src={avatarSrc(me.avatar_id)}
+                                        className="absolute inset-0 w-full h-full object-contain
+                   scale-[1.05] translate-y-[2%] z-10"
+                                    />
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -483,6 +570,38 @@ export default function RandomChatRoom() {
                     onAcceptRequest={() => handleAcceptRequest(partner.id)}
                     onDeclineRequest={() => handleDeclineRequest(partner.id)}
                 />
+            )}
+            {showLeaveConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="bg-white rounded-xl shadow-lg w-[320px] p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                            ยืนยันการออกจากห้อง
+                        </h3>
+
+                        <p className="text-sm text-gray-600 mb-6">
+                            คุณต้องการออกจากห้องแชทสุ่มนี้ใช่หรือไม่?
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowLeaveConfirm(false)}
+                                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            >
+                                ยกเลิก
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    setShowLeaveConfirm(false);
+                                    leaveRoom();
+                                }}
+                                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+                            >
+                                ออกจากห้อง
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -15,6 +15,7 @@ export default function useGifSearchRandom(roomId) {
     if (!gifSearch.trim()) return;
 
     const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${gifSearch}&limit=20`;
+
     const res = await fetch(url);
     const data = await res.json();
     setGifResults(data.data || []);

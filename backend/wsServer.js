@@ -9,6 +9,17 @@ let roomMembers = new Map();
 
 let socketToUser = new Map();
 
+// ===== helper สำหรับ preview ข้อความแจ้งเตือน =====
+const previewText = (text, type, max = 40) => {
+  if (text && text.trim()) {
+    return text.length > max ? text.slice(0, max) + "…" : text;
+  }
+  if (type === "image") return "ส่งรูปภาพ";
+  if (type === "gif") return "ส่ง GIF";
+  if (type === "video") return "ส่งวิดีโอ";
+  return "ส่งไฟล์";
+};
+
 export let ioInstance = null;
 export let onlineUsersInstance = null;
 
@@ -89,21 +100,43 @@ export function setupWebSocket(server) {
 
         if (type === "text") text = filterBadWords(text);
 
-        const result = await pool.query(
+        // 1) INSERT message (เอาแค่ id พอ)
+        const insertResult = await pool.query(
           `
-          INSERT INTO messages (room_id, sender_id, text, type, file_url)
-          VALUES ($1,$2,$3,$4,$5)
-          RETURNING *
-        `,
+      INSERT INTO messages (room_id, sender_id, text, type, file_url)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING id
+      `,
           [room_id, sender_id, text || null, type, file_url || null]
         );
 
-        const msg = result.rows[0];
+        const messageId = insertResult.rows[0].id;
 
-        io.to(room_id).emit("receive_message", msg);
-        safeCallback({ ok: true, msg });
+        // 2) LOAD message + sender + profile (จุดสำคัญ)
+        const fullResult = await pool.query(
+          `
+      SELECT 
+        m.*,
+        u.display_name AS sender_name,
+        p.avatar_id,
+        p.item_id
+      FROM messages m
+      JOIN users u ON u.id = m.sender_id
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE m.id = $1
+      `,
+          [messageId]
+        );
 
-        // แจ้งเตือนถ้าอีกฝ่ายไม่อยู่ในห้อง
+        const socketMsg = fullResult.rows[0];
+
+        // 3) EMIT real-time (ใช้ payload ครบ)
+        io.to(String(room_id)).emit("receive_message", socketMsg);
+        safeCallback({ ok: true, msg: socketMsg });
+
+        // ===============================
+        // แจ้งเตือน (ของเดิม ใช้ได้)
+        // ===============================
         const roomData = await pool.query(
           `SELECT user1_id, user2_id FROM chat_rooms WHERE id = $1`,
           [room_id]
@@ -113,54 +146,58 @@ export function setupWebSocket(server) {
         const receiverId = sender_id === user1_id ? user2_id : user1_id;
 
         const members = roomMembers.get(room_id);
-
-        // ✅ เช็กว่า "ผู้รับอยู่ในห้องนี้จริงไหม"
         const isReceiverInRoom =
           members && members.has(String(receiverId));
 
         if (!isReceiverInRoom) {
-          const senderName = (
-            await pool.query(
-              `SELECT display_name FROM users WHERE id = $1`,
-              [sender_id]
-            )
-          ).rows[0].display_name;
-
           await pool.query(
             `
-              INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
-              VALUES ($1, 'chat_message', $2, $3, $4, false)
-            `,
+        INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
+        VALUES ($1, 'chat_message', $2, $3, $4, false)
+        `,
             [
               receiverId,
               "ข้อความใหม่จากเพื่อน",
-              `${senderName} ส่งข้อความถึงคุณ`,
+              `${socketMsg.sender_name}: ${previewText(socketMsg.text, socketMsg.type)}`,
               sender_id
             ]
+
           );
         }
 
-        // AI cleaning async
+        // ===============================
+        // AI cleaning (ของเดิม ใช้ได้)
+        // ===============================
         setTimeout(async () => {
           if (!text) return;
 
           const clean = await aiModerate(text);
           if (!clean || clean === text) return;
 
-          await pool.query(`UPDATE messages SET text=$1 WHERE id=$2`, [
-            clean,
-            msg.id,
-          ]);
+          await pool.query(
+            `UPDATE messages SET text=$1 WHERE id=$2`,
+            [clean, messageId]
+          );
 
-          io.to(room_id).emit("message_updated", {
-            id: msg.id,
+          io.to(String(room_id)).emit("message_updated", {
+            id: messageId,
             text: clean,
           });
         }, 50);
 
       } catch (err) {
         console.error("send_message ERR:", err);
-        callback?.({ ok: false });
+        callback?.({ ok: false, error: err.message });
+      }
+    });
+
+    socket.on("leave_room", ({ roomId, userId }) => {
+      if (!roomMembers.has(roomId)) return;
+
+      roomMembers.get(roomId).delete(String(userId));
+
+      if (roomMembers.get(roomId).size === 0) {
+        roomMembers.delete(roomId);
       }
     });
 
@@ -182,7 +219,7 @@ export function setupWebSocket(server) {
       randomWaiting.push(userData);
       console.log("Queue =", randomWaiting.map((u) => u.userId));
 
-      // ▶ DEBUG: ดูคิวทั้งหมด
+      //DEBUG: ดูคิวทั้งหมด
       console.log("FULL QUEUE DATA =", randomWaiting);
 
       // ==== GLOBAL PAIR FINDER ====
@@ -229,7 +266,7 @@ export function setupWebSocket(server) {
       }
 
       // ==== ตรงนี้ต้องวิ่ง! ====
-      console.log("🎉 MATCH FOUND!", matchedA.userId, matchedB.userId);
+      console.log("MATCH FOUND!", matchedA.userId, matchedB.userId);
 
       const roomId = "random_" + Date.now();
 
@@ -318,7 +355,7 @@ export function setupWebSocket(server) {
       // map socket → user
       socketToUser.set(socket.id, String(user.id));
 
-      // ❌ อย่าเช็กจาก group_rooms.members (เสี่ยง race)
+      // อย่าเช็กจาก group_rooms.members (เสี่ยง race)
       const countRes = await pool.query(
         `SELECT COUNT(*) FROM group_room_members WHERE room_id = $1`,
         [roomId]
@@ -338,7 +375,7 @@ export function setupWebSocket(server) {
       if (!roomMembers.has(roomId)) roomMembers.set(roomId, new Set());
       roomMembers.get(roomId).add(socket.id);
 
-      // ✅ insert DB แบบกันซ้ำ
+      // insert DB แบบกันซ้ำ
       await pool.query(
         `
     INSERT INTO group_room_members (room_id, user_id)
@@ -352,10 +389,10 @@ export function setupWebSocket(server) {
         `User ${user.id} joined GroupRoom ${roomId} (reconnect=${!!isReconnect})`
       );
 
-      // 🔄 อัปเดต member list ทุกคน
+      // อัปเดต member list ทุกคน
       io.to(roomId).emit("groupChat:syncMembers");
 
-      // 🚨 แสดงข้อความ "เข้าห้อง" เฉพาะเข้าใหม่จริง
+      // แสดงข้อความ "เข้าห้อง" เฉพาะเข้าใหม่จริง
       if (!isReconnect) {
         socket.to(roomId).emit("groupChat:userJoin", {
           userId: user.id,
@@ -382,7 +419,7 @@ export function setupWebSocket(server) {
 
       console.log(`(INVITE) User ${user.id} joined GroupRoom ${roomId}`);
 
-      // ✅ สำคัญมาก
+      // สำคัญมาก
       io.to(roomId).emit("groupChat:syncMembers");
 
       socket.to(roomId).emit("groupChat:userJoin", {
@@ -441,7 +478,7 @@ export function setupWebSocket(server) {
         [count, roomId]
       );
 
-      // ✅ ค่อย sync หลัง DB เสร็จ
+      // ค่อย sync หลัง DB เสร็จ
       io.to(roomId).emit("groupChat:syncMembers");
 
       // ลบห้องถ้าไม่มีสมาชิก

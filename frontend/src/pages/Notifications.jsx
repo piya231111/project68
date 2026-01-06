@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 export default function Notifications() {
   const [list, setList] = useState([]);
   const navigate = useNavigate();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     load();
@@ -62,6 +64,25 @@ export default function Notifications() {
     }
   };
 
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === "one") {
+      await api.delete(`/notifications/${deleteTarget.id}`);
+      setList((prev) =>
+        prev.filter((n) => n.id !== deleteTarget.id)
+      );
+    }
+
+    if (deleteTarget.type === "all") {
+      await api.delete("/notifications");
+      setList([]);
+    }
+
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
+  };
+
   const deleteItem = async (id) => {
     await api.delete(`/notifications/${id}`);
     setList((prev) => prev.filter((n) => n.id !== id));
@@ -96,7 +117,10 @@ export default function Notifications() {
 
         {list.length > 0 && (
           <button
-            onClick={clearAll}
+            onClick={() => {
+              setDeleteTarget({ type: "all" });
+              setShowDeleteConfirm(true);
+            }}
             className="px-4 py-2 bg-red-500 text-white rounded-xl shadow hover:bg-red-600"
           >
             ลบทั้งหมด
@@ -143,7 +167,8 @@ export default function Notifications() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                deleteItem(n.id);
+                setDeleteTarget({ type: "one", id: n.id });
+                setShowDeleteConfirm(true);
               }}
               className="text-red-500 hover:text-red-700 text-sm ml-2"
             >
@@ -151,7 +176,40 @@ export default function Notifications() {
             </button>
           </div>
         ))}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-[90%] max-w-sm shadow-xl">
+              <h2 className="text-lg font-bold text-gray-800 mb-3">
+                ยืนยันการลบ
+              </h2>
 
+              <p className="text-gray-600 mb-6">
+                {deleteTarget?.type === "all"
+                  ? "คุณต้องการลบแจ้งเตือนทั้งหมดใช่หรือไม่?"
+                  : "คุณต้องการลบแจ้งเตือนนี้ใช่หรือไม่?"}
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteTarget(null);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+                >
+                  ยกเลิก
+                </button>
+
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+                >
+                  ลบ
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

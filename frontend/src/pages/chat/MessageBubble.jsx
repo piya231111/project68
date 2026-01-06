@@ -18,13 +18,19 @@ export default function MessageBubble({ message }) {
     message.type === "gif" ||
     message.type === "video";
 
-  const avatar = message.avatar_url
-    ? `${BACKEND_URL}${message.avatar_url}`
-    : "/default-avatar.png";
+  const avatar =
+    message.avatar_id
+      ? `${BACKEND_URL}/uploads/avatars/avatar${String(message.avatar_id).padStart(2, "0")}.png`
+      : isMine
+        ? `${BACKEND_URL}/uploads/avatars/avatar${String(me.avatar_id).padStart(2, "0")}.png`
+        : "/default-avatar.png";
 
-  const item = message.item_url
-    ? `${BACKEND_URL}${message.item_url}`
-    : null;
+  const item =
+    message.item_id
+      ? `${BACKEND_URL}/uploads/items/item${String(message.item_id).padStart(2, "0")}.png`
+      : isMine
+        ? `${BACKEND_URL}/uploads/items/item${String(me.item_id).padStart(2, "0")}.png`
+        : null;
 
   const mediaUrl = message.file_url
     ? message.file_url.startsWith("http")

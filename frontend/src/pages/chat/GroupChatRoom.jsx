@@ -437,7 +437,7 @@ export default function GroupChatRoom() {
                 </div>
               )}
 
-              {/* 💬 MESSAGE */}
+              {/* MESSAGE */}
               <div
                 className={`flex flex-col max-w-[260px] ${isMine ? "items-end" : "items-start"
                   }`}
