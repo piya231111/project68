@@ -1,8 +1,7 @@
 // backend/wsServer.js
 import { Server } from "socket.io";
 import { pool } from "./db.js";
-import { filterBadWords } from "./utils/textModerationRegex.js";
-import { aiModerate } from "./utils/textModerationAI.js";
+import { censorText, moderateText } from "./utils/textModeration.js";
 
 let onlineUsers = new Map();
 let roomMembers = new Map();
@@ -98,15 +97,17 @@ export function setupWebSocket(server) {
         if (!room_id || !sender_id)
           return safeCallback({ ok: false, error: "missing data" });
 
-        if (type === "text") text = filterBadWords(text);
+        if (type === "text") {
+          text = censorText(text);
+        }
 
         // 1) INSERT message (เอาแค่ id พอ)
         const insertResult = await pool.query(
           `
-      INSERT INTO messages (room_id, sender_id, text, type, file_url)
-      VALUES ($1,$2,$3,$4,$5)
-      RETURNING id
-      `,
+          INSERT INTO messages (room_id, sender_id, text, type, file_url)
+          VALUES ($1,$2,$3,$4,$5)
+          RETURNING id
+          `,
           [room_id, sender_id, text || null, type, file_url || null]
         );
 
@@ -115,16 +116,16 @@ export function setupWebSocket(server) {
         // 2) LOAD message + sender + profile (จุดสำคัญ)
         const fullResult = await pool.query(
           `
-      SELECT 
-        m.*,
-        u.display_name AS sender_name,
-        p.avatar_id,
-        p.item_id
-      FROM messages m
-      JOIN users u ON u.id = m.sender_id
-      LEFT JOIN profiles p ON p.user_id = u.id
-      WHERE m.id = $1
-      `,
+          SELECT 
+            m.*,
+            u.display_name AS sender_name,
+            p.avatar_id,
+            p.item_id
+          FROM messages m
+          JOIN users u ON u.id = m.sender_id
+          LEFT JOIN profiles p ON p.user_id = u.id
+          WHERE m.id = $1
+          `,
           [messageId]
         );
 
@@ -152,9 +153,9 @@ export function setupWebSocket(server) {
         if (!isReceiverInRoom) {
           await pool.query(
             `
-        INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
-        VALUES ($1, 'chat_message', $2, $3, $4, false)
-        `,
+            INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
+            VALUES ($1, 'chat_message', $2, $3, $4, false)
+          `,
             [
               receiverId,
               "ข้อความใหม่จากเพื่อน",
@@ -164,26 +165,6 @@ export function setupWebSocket(server) {
 
           );
         }
-
-        // ===============================
-        // AI cleaning (ของเดิม ใช้ได้)
-        // ===============================
-        setTimeout(async () => {
-          if (!text) return;
-
-          const clean = await aiModerate(text);
-          if (!clean || clean === text) return;
-
-          await pool.query(
-            `UPDATE messages SET text=$1 WHERE id=$2`,
-            [clean, messageId]
-          );
-
-          io.to(String(room_id)).emit("message_updated", {
-            id: messageId,
-            text: clean,
-          });
-        }, 50);
 
       } catch (err) {
         console.error("send_message ERR:", err);
@@ -312,11 +293,18 @@ export function setupWebSocket(server) {
         RANDOM CHAT: SEND MESSAGE
     ============================== */
     socket.on("randomChat:message", (msg) => {
+      let text = msg.text || null;
+      const type = msg.type || "text"; 
+
+      if (msg.type === "text" && text) {
+        text = censorText(text);
+      }
+
       io.to(msg.roomId).emit("randomChat:message", {
-        text: msg.text || null,
+        text,
         sender: String(msg.sender),
         fileUrl: msg.fileUrl || null,
-        type: msg.type || "text",
+        type,
         time: msg.time || Date.now(),
       });
     });
@@ -378,10 +366,10 @@ export function setupWebSocket(server) {
       // insert DB แบบกันซ้ำ
       await pool.query(
         `
-    INSERT INTO group_room_members (room_id, user_id)
-    VALUES ($1, $2)
-    ON CONFLICT DO NOTHING
-    `,
+        INSERT INTO group_room_members (room_id, user_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `,
         [roomId, user.id]
       );
 
@@ -435,13 +423,21 @@ export function setupWebSocket(server) {
     ============================= */
     socket.on("groupChat:message", (msg) => {
       const { roomId } = msg;
+      let text = msg.text || null;
+      const type = msg.type || "text"; 
+
+      if (type === "text" && text) {
+        text = censorText(text);
+      }
 
       io.to(roomId).emit("groupChat:message", {
         sender: msg.sender,
         name: msg.name,
-        text: msg.text || null,
+        avatar_id: msg.avatar_id,   
+        item_id: msg.item_id, 
+        text,
         fileUrl: msg.fileUrl || null,
-        type: msg.type || "text",
+        type,
         time: msg.time || Date.now(),
       });
     });
@@ -535,7 +531,7 @@ export function setupWebSocket(server) {
         if (count === 0) {
           await pool.query(`DELETE FROM group_rooms WHERE id = $1`, [roomId]);
           roomMembers.delete(roomId);
-          console.log("🗑 ลบห้องอัตโนมัติ:", roomId);
+          console.log("ลบห้องอัตโนมัติ:", roomId);
         }
       }
     });

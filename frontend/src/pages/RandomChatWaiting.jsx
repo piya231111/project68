@@ -18,22 +18,22 @@ async function loadUserRelationsFresh() {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => r.json());
 
-    //  ลบข้อมูลซ้ำออก (สำคัญมาก)
-    me.friends = [...new Set(fr.friends.map((f) => f.id))];
-    me.blocked = [...new Set(bl.blocked.map((b) => b.id))];
+    me.friends = [...new Set(fr.friends.map(f => f.id))];
+    me.blocked = [...new Set(bl.blocked.map(b => b.id))];
 
     localStorage.setItem("user", JSON.stringify(me));
-
     return me;
   } catch (err) {
     console.error("โหลด friends/blocked ไม่สำเร็จ:", err);
-    return me; // fallback
+    return me;
   }
 }
 
 export default function RandomChatWaiting() {
   const navigate = useNavigate();
+
   const [status, setStatus] = useState("กำลังค้นหาคู่...");
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const joinedRef = useRef(false);
 
@@ -41,16 +41,12 @@ export default function RandomChatWaiting() {
     let isMounted = true;
 
     (async () => {
-      const me = await loadUserRelationsFresh(); // ⭐ โหลด relations ใหม่ทุกครั้ง
-
-      if (!me || !me.id) return;
-
-      console.log("🔥 DEBUG ME =", me);
+      const me = await loadUserRelationsFresh();
+      if (!me?.id) return;
 
       if (joinedRef.current) return;
       joinedRef.current = true;
 
-      // ส่งข้อมูลเข้าสู่คิวแบบใหม่ที่ถูกต้อง
       socket.emit("randomChat:joinQueue", {
         userId: me.id,
         country: me.country,
@@ -61,8 +57,9 @@ export default function RandomChatWaiting() {
       });
 
       socket.on("randomChat:waiting", () => {
-        if (!isMounted) return;
-        setStatus("กำลังหาเพื่อนคุยที่เข้ากันได้...");
+        if (isMounted) {
+          setStatus("กำลังหาเพื่อนคุยที่เข้ากันได้...");
+        }
       });
 
       socket.on("randomChat:matched", ({ roomId }) => {
@@ -75,7 +72,7 @@ export default function RandomChatWaiting() {
       socket.off("randomChat:waiting");
       socket.off("randomChat:matched");
     };
-  }, []);
+  }, [navigate]);
 
   const cancelRandomChat = () => {
     joinedRef.current = false;
@@ -85,17 +82,53 @@ export default function RandomChatWaiting() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#E9FBFF]">
+
       <div className="text-center mb-10">
         <p className="text-2xl font-semibold text-[#00B8E6]">{status}</p>
         <div className="mt-6 animate-spin w-12 h-12 border-4 border-[#00B8E6] border-t-transparent rounded-full mx-auto"></div>
       </div>
 
+      {/* ปุ่มยกเลิก */}
       <button
-        onClick={cancelRandomChat}
+        onClick={() => setShowLeaveConfirm(true)}
         className="px-6 py-3 bg-red-500 text-white rounded-xl text-lg font-semibold hover:bg-red-600 transition shadow"
       >
         ยกเลิก
       </button>
+
+      {/* CONFIRM MODAL */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-lg w-[320px] p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              ยืนยันการยกเลิก
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-6">
+              คุณต้องการยกเลิกการค้นหาเพื่อนคุยใช่หรือไม่?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                ไม่ยกเลิก
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowLeaveConfirm(false);
+                  cancelRandomChat();  
+                }}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+              >
+                ยืนยันยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

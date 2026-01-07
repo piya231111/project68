@@ -1,4 +1,5 @@
-import React from "react";
+import { useState } from "react";
+import FriendDetailModal from "../../components/FriendDetailModal";
 
 const BACKEND_URL = "http://localhost:7000";
 
@@ -7,6 +8,19 @@ export default function MessageBubble({ message }) {
   const userId = me?.id;
 
   const isMine = String(message.sender_id) === String(userId);
+
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const clickableUser = !isMine
+    ? {
+      id: message.sender_id,
+      display_name: message.sender_name,
+      avatar_id: message.avatar_id,
+      item_id: message.item_id,
+      isInRoom: true,
+    }
+    : null;
 
   const time = new Date(message.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -20,16 +34,24 @@ export default function MessageBubble({ message }) {
 
   const avatar =
     message.avatar_id
-      ? `${BACKEND_URL}/uploads/avatars/avatar${String(message.avatar_id).padStart(2, "0")}.png`
+      ? `${BACKEND_URL}/uploads/avatars/avatar${String(
+        message.avatar_id
+      ).padStart(2, "0")}.png`
       : isMine
-        ? `${BACKEND_URL}/uploads/avatars/avatar${String(me.avatar_id).padStart(2, "0")}.png`
+        ? `${BACKEND_URL}/uploads/avatars/avatar${String(
+          me.avatar_id
+        ).padStart(2, "0")}.png`
         : "/default-avatar.png";
 
   const item =
     message.item_id
-      ? `${BACKEND_URL}/uploads/items/item${String(message.item_id).padStart(2, "0")}.png`
+      ? `${BACKEND_URL}/uploads/items/item${String(
+        message.item_id
+      ).padStart(2, "0")}.png`
       : isMine
-        ? `${BACKEND_URL}/uploads/items/item${String(me.item_id).padStart(2, "0")}.png`
+        ? `${BACKEND_URL}/uploads/items/item${String(
+          me.item_id
+        ).padStart(2, "0")}.png`
         : null;
 
   const mediaUrl = message.file_url
@@ -39,79 +61,103 @@ export default function MessageBubble({ message }) {
     : null;
 
   return (
-    <div
-      className={`flex my-4 ${isMine ? "justify-end" : "justify-start"
-        }`}
-    >
-      <div
-        className={`flex gap-2 ${isMine ? "flex-row-reverse items-end" : "items-start"
-          }`}
-      >
-        <div className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden border shadow bg-white">
-
-          {/* ITEM : ชั้นหลัง (พอดีวง ไม่เล็กเกิน) */}
-          {item && (
-            <img
-              src={item}
-              alt="item"
-              className="absolute inset-0 w-full h-full object-contain scale-[1.08] translate-y-[3%] opacity-75 z-0 pointer-events-none"
-            />
-          )}
-
-          {/* AVATAR : เต็มพอดีวง */}
-          <img
-            src={avatar}
-            onError={(e) => (e.target.src = '/default-avatar.png')}
-            className="absolute inset-0 w-full h-full object-contain scale-[1.05] translate-y-[2%] z-10"
-          />
-        </div>
-
-        {/* ===== MESSAGE BLOCK ===== */}
+    <>
+      {/* ===== MESSAGE ===== */}
+      <div className={`flex my-4 ${isMine ? "justify-end" : "justify-start"}`}>
         <div
-          className={`flex flex-col max-w-xs ${isMine ? "items-end" : "items-start"
+          className={`flex gap-2 ${isMine ? "flex-row-reverse items-end" : "items-start"
             }`}
         >
-          {/* NAME */}
-          <p className="text-[11px] text-gray-500 font-medium mb-1">
-            {isMine ? me?.username : message.sender_name}
-          </p>
+          {/* ===== AVATAR (CLICKABLE) ===== */}
+          <button
+            onClick={() => {
+              if (!clickableUser) return;
+              setSelectedUser(clickableUser);
+              setShowDetail(true);
+            }}
+            className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden border shadow bg-white focus:outline-none"
+          >
+            {item && (
+              <img
+                src={item}
+                alt="item"
+                className="absolute inset-0 w-full h-full object-contain scale-[1.08] translate-y-[3%] opacity-75 z-0 pointer-events-none"
+              />
+            )}
 
-          {/* MEDIA */}
-          {isMedia && mediaUrl && (
-            <div className="my-1">
-              {message.type === "video" ? (
-                <video
-                  src={mediaUrl}
-                  controls
-                  className="max-w-[260px] rounded-2xl shadow"
-                />
-              ) : (
-                <img
-                  src={mediaUrl}
-                  className="max-w-[260px] rounded-2xl shadow"
-                />
-              )}
-            </div>
-          )}
+            <img
+              src={avatar}
+              onError={(e) => (e.target.src = "/default-avatar.png")}
+              className="absolute inset-0 w-full h-full object-contain scale-[1.05] translate-y-[2%] z-10"
+            />
+          </button>
 
-          {/* TEXT */}
-          {!isMedia && (
-            <div
-              className={`px-4 py-2 rounded-2xl shadow text-sm ${isMine
-                ? "bg-[#00B8E6] text-white rounded-br-md"
-                : "bg-white border text-gray-800 rounded-bl-md"
+          {/* ===== MESSAGE BLOCK ===== */}
+          <div
+            className={`flex flex-col max-w-xs ${isMine ? "items-end" : "items-start"
+              }`}
+          >
+            <p
+              onClick={() => {
+                if (!clickableUser) return;
+                setSelectedUser(clickableUser);
+                setShowDetail(true);
+              }}
+              className={`text-[11px] font-medium mb-1 cursor-pointer hover:underline ${isMine ? "text-gray-500" : "text-blue-500"
                 }`}
             >
-              {message.text}
-            </div>
-          )}
+              {isMine ? me?.username : message.sender_name}
+            </p>
 
-          {/* TIME */}
-          <span className="text-[10px] text-gray-400 mt-1">
-            {time}
-          </span>
+            {isMedia && mediaUrl && (
+              <div className="my-1">
+                {message.type === "video" ? (
+                  <video
+                    src={mediaUrl}
+                    controls
+                    className="max-w-[260px] rounded-2xl shadow"
+                  />
+                ) : (
+                  <img
+                    src={mediaUrl}
+                    className="max-w-[260px] rounded-2xl shadow"
+                  />
+                )}
+              </div>
+            )}
+
+            {!isMedia && (
+              <div
+                className={`px-4 py-2 rounded-2xl shadow text-sm ${isMine
+                    ? "bg-[#00B8E6] text-white rounded-br-md"
+                    : "bg-white border text-gray-800 rounded-bl-md"
+                  }`}
+              >
+                {message.text}
+              </div>
+            )}
+
+            <span className="text-[10px] text-gray-400 mt-1">{time}</span>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* ===== FRIEND DETAIL MODAL ===== */}
+      {showDetail && selectedUser && (
+        <FriendDetailModal
+          friend={{
+            ...selectedUser,
+            isFriend: false,
+            isIncomingRequest: false,
+            isSentRequest: false,
+            isInRoom: true,
+          }}
+          onClose={() => {
+            setShowDetail(false);
+            setSelectedUser(null);
+          }}
+        />
+      )}
+    </>
   );
 }

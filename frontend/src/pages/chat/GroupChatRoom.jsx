@@ -132,6 +132,22 @@ export default function GroupChatRoom() {
     }
   }
 
+  function openUserDetail(user) {
+    if (!user || user.id === me.id) return; // ไม่เปิดของตัวเอง
+
+    const friendStatus = friendMap[user.id];
+
+    setSelectedUser({
+      ...user,
+      isFriend: !!friendStatus,
+      isIncomingRequest: false,
+      isSentRequest: false,
+      isInRoom: true,
+    });
+
+    setShowDetail(true);
+  }
+
   async function addFriend(friendId) {
     const token = localStorage.getItem("token");
 
@@ -244,6 +260,8 @@ export default function GroupChatRoom() {
       roomId,
       sender: me.id,
       name: me.display_name,
+      avatar_id: me.avatar_id,
+      item_id: me.item_id,
       text: input.trim(),
       time: Date.now(),
     });
@@ -401,7 +419,15 @@ export default function GroupChatRoom() {
             );
 
           const isMine = msg.sender === me.id;
-          const senderUser = isMine ? me : getMemberById(msg.sender);
+          const senderUser = isMine
+            ? me
+            : getMemberById(msg.sender) || {
+              id: msg.sender,
+              display_name: msg.name,
+              avatar_id: msg.avatar_id,
+              item_id: msg.item_id,
+              leftRoom: true,
+            };
 
           const avatarFile =
             senderUser?.avatar_id < 10
@@ -421,7 +447,10 @@ export default function GroupChatRoom() {
             >
               {/* 👤 AVATAR ซ้าย (คนอื่น) */}
               {!isMine && (
-                <div className="relative w-14 h-14 shrink-0 rounded-full overflow-hidden border bg-white shadow">
+                <button
+                  onClick={() => openUserDetail(senderUser)}
+                  className="relative z-10 pointer-events-auto w-14 h-14 shrink-0 rounded-full overflow-hidden border bg-white shadow cursor-pointer hover:scale-105 transition focus:outline-none">
+
                   {senderUser?.item_id && (
                     <img
                       src={`http://localhost:7000/uploads/items/${itemFile}`}
@@ -434,7 +463,7 @@ export default function GroupChatRoom() {
                     className="absolute inset-0 w-full h-full object-contain
                          scale-[1.05] translate-y-[2%] z-10"
                   />
-                </div>
+                </button>
               )}
 
               {/* MESSAGE */}
@@ -443,7 +472,9 @@ export default function GroupChatRoom() {
                   }`}
               >
                 {!isMine && (
-                  <p className="text-[11px] text-blue-500 font-medium ml-1 mb-1">
+                  <p
+                    onClick={() => openUserDetail(senderUser)}
+                    className=" relative z-10 pointer-events-auto text-[11px] text-blue-500 font-medium ml-1 mb-1 cursor-pointer hover:underline">
                     {msg.name}
                   </p>
                 )}

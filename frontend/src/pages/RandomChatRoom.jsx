@@ -363,9 +363,9 @@ export default function RandomChatRoom() {
             <div className="flex justify-between items-center px-6 py-4 bg-white shadow-md">
                 <div className="flex items-center gap-3">
                     {partner && (
-                        <div
-                            className="relative w-20 h-20 rounded-full overflow-hidden
-               border bg-white flex-shrink-0"
+                        <button
+                            onClick={() => setShowDetail(true)}
+                            className="relative w-20 h-20 rounded-full overflow-hidden border bg-white flex-shrink-0 focus:outline-none"
                         >
                             {/* ITEM : ซ้อนหลัง */}
                             {partner.item_id && (
@@ -382,11 +382,13 @@ export default function RandomChatRoom() {
                                 alt="avatar"
                                 className=" absolute inset-0 w-full h-full object-contain z-20"
                             />
-                        </div>
+                        </button>
                     )}
 
                     <div>
-                        <p className="font-semibold text-gray-800">
+                        <p
+                            onClick={() => setShowDetail(true)}
+                            className="font-semibold text-gray-800">
                             {partner?.display_name || "กำลังจับคู่..."}
                         </p>
                         <p className="text-xs text-gray-400">
@@ -429,20 +431,24 @@ export default function RandomChatRoom() {
                         >
                             {/* ===== AVATAR ซ้าย (คู่สนทนา) ===== */}
                             {!isMine && partner && (
-                                <div className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden border bg-white shadow">
+                                <button
+                                    onClick={() => setShowDetail(true)}
+                                    className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden border bg-white shadow focus:outline-none"
+                                >
+
                                     {partner.item_id && (
                                         <img
                                             src={itemSrc(partner.item_id)}
                                             className="absolute inset-0 w-full h-full object-contain
-                     scale-[1.08] translate-y-[3%] opacity-70 z-0"
+                                                       scale-[1.08] translate-y-[3%] opacity-70 z-0"
                                         />
                                     )}
                                     <img
                                         src={avatarSrc(partner.avatar_id)}
                                         className="absolute inset-0 w-full h-full object-contain
-                   scale-[1.05] translate-y-[2%] z-10"
+                                                   scale-[1.05] translate-y-[2%] z-10"
                                     />
-                                </div>
+                                </button>
                             )}
 
                             {/* ===== MESSAGE ===== */}
