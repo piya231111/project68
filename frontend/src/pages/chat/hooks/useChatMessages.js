@@ -58,7 +58,7 @@ export default function useChatMessages(friendId) {
         };
         socket.on("message_updated", handleUpdate);
 
-        // ✅ ตรงนี้คือหัวใจ
+        // ตรงนี้คือหัวใจ
         return () => {
             socket.emit("leave_room", {
                 roomId,
