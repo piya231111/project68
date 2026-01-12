@@ -2,9 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { socket } from "../socket";
 import { useNavigate } from "react-router-dom";
 
-/* -------------------------------------------
-   โหลด friends + blocked ใหม่จาก backend
-------------------------------------------- */
 async function loadUserRelationsFresh() {
   const token = localStorage.getItem("token");
   const me = JSON.parse(localStorage.getItem("user"));
