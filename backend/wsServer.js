@@ -119,8 +119,11 @@ export function setupWebSocket(server) {
           SELECT 
             m.*,
             u.display_name AS sender_name,
+            u.country,
+            u.is_online,
             p.avatar_id,
-            p.item_id
+            p.item_id,
+            p.interests
           FROM messages m
           JOIN users u ON u.id = m.sender_id
           LEFT JOIN profiles p ON p.user_id = u.id
@@ -293,17 +296,24 @@ export function setupWebSocket(server) {
         RANDOM CHAT: SEND MESSAGE
     ============================== */
     socket.on("randomChat:message", (msg) => {
-      let text = msg.text || null;
-      const type = msg.type || "text"; 
+      const type = msg.type || "text";
 
-      if (msg.type === "text" && text) {
+      if (
+        (type === "image" || type === "video" || type === "gif") &&
+        !msg.fileUrl
+      ) {
+        return;
+      }
+
+      let text = msg.text || null;
+      if (type === "text" && text) {
         text = censorText(text);
       }
 
       io.to(msg.roomId).emit("randomChat:message", {
-        text,
         sender: String(msg.sender),
-        fileUrl: msg.fileUrl || null,
+        text,
+        fileUrl: msg.fileUrl ?? null,
         type,
         time: msg.time || Date.now(),
       });
@@ -398,6 +408,18 @@ export function setupWebSocket(server) {
     socket.on("groupChat:joinFromInvite", async ({ roomId, user }) => {
       if (!roomId || !user) return;
 
+      const countRes = await pool.query(
+        `SELECT COUNT(*) FROM group_room_members WHERE room_id = $1`,
+        [roomId]
+      );
+
+      if (Number(countRes.rows[0].count) >= 10) {
+        io.to(socket.id).emit("groupChat:full", {
+          error: "ห้องเต็ม (จำกัด 10 คน)",
+        });
+        return;
+      }
+
       socket.join(roomId);
 
       if (!roomMembers.has(roomId)) {
@@ -405,9 +427,17 @@ export function setupWebSocket(server) {
       }
       roomMembers.get(roomId).add(socket.id);
 
+      await pool.query(
+        `
+        INSERT INTO group_room_members (room_id, user_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+        `,
+        [roomId, user.id]
+      );
+
       console.log(`(INVITE) User ${user.id} joined GroupRoom ${roomId}`);
 
-      // สำคัญมาก
       io.to(roomId).emit("groupChat:syncMembers");
 
       socket.to(roomId).emit("groupChat:userJoin", {
@@ -423,9 +453,16 @@ export function setupWebSocket(server) {
     ============================= */
     socket.on("groupChat:message", (msg) => {
       const { roomId } = msg;
-      let text = msg.text || null;
-      const type = msg.type || "text"; 
+      const type = msg.type || "text";
 
+      if (
+        (type === "image" || type === "video" || type === "gif") &&
+        !msg.fileUrl
+      ) {
+        return;
+      }
+
+      let text = msg.text || null;
       if (type === "text" && text) {
         text = censorText(text);
       }
@@ -433,10 +470,10 @@ export function setupWebSocket(server) {
       io.to(roomId).emit("groupChat:message", {
         sender: msg.sender,
         name: msg.name,
-        avatar_id: msg.avatar_id,   
-        item_id: msg.item_id, 
+        avatar_id: msg.avatar_id,
+        item_id: msg.item_id,
         text,
-        fileUrl: msg.fileUrl || null,
+        fileUrl: msg.fileUrl ?? null,
         type,
         time: msg.time || Date.now(),
       });

@@ -103,7 +103,11 @@ export default function GroupChatLobby() {
     const data = await res.json();
     if (!res.ok) return alert(data.error || "สร้างห้องไม่สำเร็จ");
 
+    await loadRooms();
+
+    // (ถ้ายังอยากเข้าไปในห้องที่สร้าง)
     navigate(`/chat/group/${data.roomId}`);
+
     setCreateModal(false);
     setNewRoomName("");
     setRoomPassword("");
@@ -263,7 +267,7 @@ function RoomCard({ room, joinRoom }) {
         </h3>
 
         <p className="text-gray-600 text-sm mt-1">
-          ทั้งหมด {room.members} คน
+          ทั้งหมด {room.members} / 10 คน
         </p>
 
         <p className="text-sm mt-1">

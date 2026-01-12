@@ -10,6 +10,7 @@ import InviteFriendModal from "../../components/InviteFriendModal";
 export default function GroupChatRoom() {
   const { roomId } = useParams();
   const navigate = useNavigate();
+  const [roomName, setRoomName] = useState("ห้องแชทกลุ่ม");
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -113,6 +114,10 @@ export default function GroupChatRoom() {
       );
 
       const data = await res.json();
+
+      if (data.room?.name) {
+        setRoomName(data.room.name);
+      }
 
       if (!Array.isArray(data.members)) {
         setMembers([]);
@@ -262,6 +267,10 @@ export default function GroupChatRoom() {
       name: me.display_name,
       avatar_id: me.avatar_id,
       item_id: me.item_id,
+
+      country: me.country || null,
+      interests: me.interests || null,
+
       text: input.trim(),
       time: Date.now(),
     });
@@ -294,6 +303,12 @@ export default function GroupChatRoom() {
       roomId,
       sender: me.id,
       name: me.display_name,
+      avatar_id: me.avatar_id,
+      item_id: me.item_id,
+
+      country: me.country || null,
+      interests: me.interests || null,
+
       fileUrl: data.url,
       type: file.type.startsWith("video") ? "video" : "image",
       time: Date.now(),
@@ -330,7 +345,12 @@ export default function GroupChatRoom() {
 
       {/* HEADER */}
       <div className="flex justify-between items-center px-6 py-4 bg-white shadow-md">
-        <h1 className="text-xl font-bold text-[#00B8E6]">ห้องแชทกลุ่ม</h1>
+        <h1 className="text-xl font-bold text-[#00B8E6]">
+          {roomName}
+          <span className="ml-2 text-sm font-medium text-gray-500">
+            ( {members.length} / 10 )
+          </span>
+        </h1>
 
         <button
           onClick={() => setShowLeaveConfirm(true)}
@@ -426,6 +446,10 @@ export default function GroupChatRoom() {
               display_name: msg.name,
               avatar_id: msg.avatar_id,
               item_id: msg.item_id,
+
+              country: msg.country,
+              interests: msg.interests,
+
               leftRoom: true,
             };
 
@@ -590,6 +614,12 @@ export default function GroupChatRoom() {
               roomId,
               sender: me.id,
               name: me.display_name,
+              avatar_id: me.avatar_id,
+              item_id: me.item_id,
+
+              country: me.country || null,
+              interests: me.interests || null,
+
               fileUrl: gifUrl,
               type: "gif",
               time: Date.now(),

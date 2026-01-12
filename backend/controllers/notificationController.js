@@ -107,21 +107,35 @@ export async function sendGroupInvite(req, res) {
       [inviterId]
     );
 
+    const roomRes = await pool.query(
+      `SELECT name FROM group_rooms WHERE id = $1`,
+      [roomId]
+    );
+
+    if (roomRes.rowCount === 0) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    const roomName = roomRes.rows[0].name;
+
+
     const inviterName = inviter.rows[0].display_name;
 
     // บันทึกแจ้งเตือนลง DB
     const result = await pool.query(
-      `INSERT INTO notifications (user_id, type, title, body, friend_id, group_room_id, is_read)
-       VALUES ($1, 'group_invite', $2, $3, $4, $5, false)
-       RETURNING id`,
+      `INSERT INTO notifications 
+      (user_id, type, title, body, friend_id, group_room_id, is_read)
+      VALUES ($1, 'group_invite', $2, $3, $4, $5, false)
+      RETURNING id`,
       [
         targetUserId,
         "คำเชิญเข้าห้องแชทกลุ่ม",
-        `${inviterName} ชวนคุณเข้าห้อง`,
+        `${inviterName} ชวนคุณเข้าห้อง "${roomName}"`,
         inviterId,
         roomId
       ]
     );
+
 
     const notiId = result.rows[0].id;
 

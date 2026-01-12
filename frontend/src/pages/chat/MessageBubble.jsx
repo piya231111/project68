@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { api } from "../../api";
 import FriendDetailModal from "../../components/FriendDetailModal";
 
 const BACKEND_URL = "http://localhost:7000";
@@ -12,15 +13,27 @@ export default function MessageBubble({ message }) {
   const [showDetail, setShowDetail] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  const clickableUser = !isMine
-    ? {
-      id: message.sender_id,
-      display_name: message.sender_name,
-      avatar_id: message.avatar_id,
-      item_id: message.item_id,
-      isInRoom: true,
+  const openDetail = async () => {
+    if (isMine) return;
+
+    try {
+      const userRes = await api.get(`/users/${message.sender_id}`);
+
+      const statusRes = await api.get(`/friends/${message.sender_id}/status`);
+
+      setSelectedUser({
+        ...userRes.data,
+        isFriend: statusRes.data.isFriend,
+        isIncomingRequest: statusRes.data.isIncomingRequest,
+        isSentRequest: statusRes.data.isSentRequest,
+      });
+
+      setShowDetail(true);
+    } catch (e) {
+      console.error(e);
+      alert("โหลดข้อมูลผู้ใช้ไม่สำเร็จ");
     }
-    : null;
+  };
 
   const time = new Date(message.created_at).toLocaleTimeString([], {
     hour: "2-digit",
@@ -38,20 +51,23 @@ export default function MessageBubble({ message }) {
         message.avatar_id
       ).padStart(2, "0")}.png`
       : isMine
-        ? `${BACKEND_URL}/uploads/avatars/avatar${String(
-          me.avatar_id
-        ).padStart(2, "0")}.png`
+        ? `${BACKEND_URL}/uploads/avatars/avatar${String(me.avatar_id).padStart(
+          2,
+          "0"
+        )}.png`
         : "/default-avatar.png";
 
   const item =
     message.item_id
-      ? `${BACKEND_URL}/uploads/items/item${String(
-        message.item_id
-      ).padStart(2, "0")}.png`
+      ? `${BACKEND_URL}/uploads/items/item${String(message.item_id).padStart(
+        2,
+        "0"
+      )}.png`
       : isMine
-        ? `${BACKEND_URL}/uploads/items/item${String(
-          me.item_id
-        ).padStart(2, "0")}.png`
+        ? `${BACKEND_URL}/uploads/items/item${String(me.item_id).padStart(
+          2,
+          "0"
+        )}.png`
         : null;
 
   const mediaUrl = message.file_url
@@ -70,11 +86,7 @@ export default function MessageBubble({ message }) {
         >
           {/* ===== AVATAR (CLICKABLE) ===== */}
           <button
-            onClick={() => {
-              if (!clickableUser) return;
-              setSelectedUser(clickableUser);
-              setShowDetail(true);
-            }}
+            onClick={openDetail}
             className="relative shrink-0 w-14 h-14 rounded-full overflow-hidden border shadow bg-white focus:outline-none"
           >
             {item && (
@@ -89,6 +101,7 @@ export default function MessageBubble({ message }) {
               src={avatar}
               onError={(e) => (e.target.src = "/default-avatar.png")}
               className="absolute inset-0 w-full h-full object-contain scale-[1.05] translate-y-[2%] z-10"
+              alt="avatar"
             />
           </button>
 
@@ -98,15 +111,11 @@ export default function MessageBubble({ message }) {
               }`}
           >
             <p
-              onClick={() => {
-                if (!clickableUser) return;
-                setSelectedUser(clickableUser);
-                setShowDetail(true);
-              }}
+              onClick={openDetail}
               className={`text-[11px] font-medium mb-1 cursor-pointer hover:underline ${isMine ? "text-gray-500" : "text-blue-500"
                 }`}
             >
-              {isMine ? me?.username : message.sender_name}
+              {message.sender_name}
             </p>
 
             {isMedia && mediaUrl && (
@@ -121,6 +130,7 @@ export default function MessageBubble({ message }) {
                   <img
                     src={mediaUrl}
                     className="max-w-[260px] rounded-2xl shadow"
+                    alt="media"
                   />
                 )}
               </div>
@@ -129,8 +139,8 @@ export default function MessageBubble({ message }) {
             {!isMedia && (
               <div
                 className={`px-4 py-2 rounded-2xl shadow text-sm ${isMine
-                    ? "bg-[#00B8E6] text-white rounded-br-md"
-                    : "bg-white border text-gray-800 rounded-bl-md"
+                  ? "bg-[#00B8E6] text-white rounded-br-md"
+                  : "bg-white border text-gray-800 rounded-bl-md"
                   }`}
               >
                 {message.text}
@@ -145,13 +155,7 @@ export default function MessageBubble({ message }) {
       {/* ===== FRIEND DETAIL MODAL ===== */}
       {showDetail && selectedUser && (
         <FriendDetailModal
-          friend={{
-            ...selectedUser,
-            isFriend: false,
-            isIncomingRequest: false,
-            isSentRequest: false,
-            isInRoom: true,
-          }}
+          friend={selectedUser}
           onClose={() => {
             setShowDetail(false);
             setSelectedUser(null);

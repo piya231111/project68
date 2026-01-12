@@ -13,7 +13,7 @@ export async function getAllGroupRooms(req, res) {
       ORDER BY created_at DESC
     `);
 
-        // ⭐ ห้องยอดนิยม (Public + สมาชิกเยอะสุด 5 ห้อง)
+        // ห้องยอดนิยม (Public + สมาชิกเยอะสุด 5 ห้อง)
         const popular = await pool.query(`
       SELECT id, name, type, members, created_at
       FROM group_rooms
