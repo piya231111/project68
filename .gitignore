@@ -1,0 +1,21 @@
+# Node / Frontend
+node_modules/
+dist/
+.env
+
+# Python / Django
+__pycache__/
+*.pyc
+.env
+.venv/
+
+# Upload / Media files (สำคัญมาก)
+backend/uploads/
+*.mp4
+*.mov
+*.avi
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
