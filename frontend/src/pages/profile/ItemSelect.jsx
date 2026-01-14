@@ -37,14 +37,13 @@ useEffect(() => {
           // เจอใน list → ใช้เลย
           setSelected(currentItem);
         } else {
-          // ถ้าไม่เจอ (เช่นมีใน DB แต่ไม่มีใน items list)
-          // ดึงจาก API โดยตรง
+          
           const fallback = await api.get(`/items/${user.item_id}`).catch(() => null);
           if (fallback?.data) setSelected(fallback.data);
         }
       }
     } catch (err) {
-      console.error("❌ โหลดข้อมูลไม่สำเร็จ:", err);
+      console.error("โหลดข้อมูลไม่สำเร็จ:", err);
     } finally {
       setLoading(false);
     }
@@ -64,8 +63,8 @@ useEffect(() => {
       alert("เปลี่ยนไอเทมเรียบร้อย");
       navigate("/profile");
     } catch (err) {
-      console.error("❌ เปลี่ยนไม่สำเร็จ:", err);
-      alert("❌ เปลี่ยนไม่สำเร็จ");
+      console.error("ปลี่ยนไม่สำเร็จ:", err);
+      alert("เปลี่ยนไม่สำเร็จ");
     } finally {
       setSaving(false);
     }

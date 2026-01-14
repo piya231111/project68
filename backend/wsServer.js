@@ -1,7 +1,7 @@
 // backend/wsServer.js
 import { Server } from "socket.io";
 import { pool } from "./db.js";
-import { censorText, moderateText } from "./utils/textModeration.js";
+import { censorText } from "./utils/textModeration.js";
 
 let onlineUsers = new Map();
 let roomMembers = new Map();
@@ -55,6 +55,8 @@ export function setupWebSocket(server) {
     ============================== */
     socket.on("online", (userId) => {
       if (userId) {
+
+        socketToUser.set(socket.id, String(userId));
         onlineUsers.set(String(userId), socket.id);
         console.log(`User ${userId} online via socket ${socket.id}`);
       }
@@ -101,71 +103,87 @@ export function setupWebSocket(server) {
           text = censorText(text);
         }
 
-        // 1) INSERT message (เอาแค่ id พอ)
+        // 1) INSERT message
         const insertResult = await pool.query(
           `
-          INSERT INTO messages (room_id, sender_id, text, type, file_url)
-          VALUES ($1,$2,$3,$4,$5)
-          RETURNING id
-          `,
+      INSERT INTO messages (room_id, sender_id, text, type, file_url)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING id
+      `,
           [room_id, sender_id, text || null, type, file_url || null]
         );
 
         const messageId = insertResult.rows[0].id;
 
-        // 2) LOAD message + sender + profile (จุดสำคัญ)
+        // 2) LOAD message + sender + profile
         const fullResult = await pool.query(
           `
-          SELECT 
-            m.*,
-            u.display_name AS sender_name,
-            u.country,
-            u.is_online,
-            p.avatar_id,
-            p.item_id,
-            p.interests
-          FROM messages m
-          JOIN users u ON u.id = m.sender_id
-          LEFT JOIN profiles p ON p.user_id = u.id
-          WHERE m.id = $1
-          `,
+      SELECT 
+        m.*,
+        u.display_name AS sender_name,
+        u.country,
+        p.is_online,
+        p.avatar_id,
+        p.item_id,
+        p.interests
+      FROM messages m
+      JOIN users u ON u.id = m.sender_id
+      LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE m.id = $1
+      `,
           [messageId]
         );
 
         const socketMsg = fullResult.rows[0];
 
-        // 3) EMIT real-time (ใช้ payload ครบ)
-        io.to(String(room_id)).emit("receive_message", socketMsg);
-        safeCallback({ ok: true, msg: socketMsg });
-
-        // ===============================
-        // แจ้งเตือน (ของเดิม ใช้ได้)
-        // ===============================
+        // 3) หา receiverId ก่อน
         const roomData = await pool.query(
           `SELECT user1_id, user2_id FROM chat_rooms WHERE id = $1`,
           [room_id]
         );
 
         const { user1_id, user2_id } = roomData.rows[0];
-        const receiverId = sender_id === user1_id ? user2_id : user1_id;
+        const receiverId =
+          String(sender_id) === String(user1_id) ? user2_id : user1_id;
 
+        // 4) ส่งให้ทุกคนที่อยู่ใน room
+        io.to(String(room_id)).emit("receive_message", socketMsg);
+
+        // 5) ถ้า receiver ยังไม่อยู่ใน room → ส่งตรง socket
         const members = roomMembers.get(room_id);
         const isReceiverInRoom =
           members && members.has(String(receiverId));
 
         if (!isReceiverInRoom) {
+          let receiverSocketId = null;
+
+          for (const [sid, uid] of socketToUser.entries()) {
+            if (uid === String(receiverId)) {
+              receiverSocketId = sid;
+              break;
+            }
+          }
+
+          if (receiverSocketId) {
+            io.to(receiverSocketId).emit("receive_message", socketMsg);
+          }
+        }
+
+        safeCallback({ ok: true, msg: socketMsg });
+
+        // 6) notification (ของเดิม)
+        if (!isReceiverInRoom) {
           await pool.query(
             `
-            INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
-            VALUES ($1, 'chat_message', $2, $3, $4, false)
-          `,
+        INSERT INTO notifications (user_id, type, title, body, friend_id, is_read)
+        VALUES ($1, 'chat_message', $2, $3, $4, false)
+        `,
             [
               receiverId,
               "ข้อความใหม่จากเพื่อน",
               `${socketMsg.sender_name}: ${previewText(socketMsg.text, socketMsg.type)}`,
-              sender_id
+              sender_id,
             ]
-
           );
         }
 

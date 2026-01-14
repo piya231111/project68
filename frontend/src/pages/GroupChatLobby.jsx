@@ -118,7 +118,7 @@ export default function GroupChatLobby() {
   );
 
   return (
-    <div className="min-h-screen bg-[#E9FBFF]">
+    <div className="h-full">
       <div className="max-w-6xl mx-auto p-6">
 
         {/* TITLE */}

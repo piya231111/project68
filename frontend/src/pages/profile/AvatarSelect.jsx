@@ -61,11 +61,11 @@ export default function AvatarSelect() {
     setSaving(true);
     try {
       await api.patch("/auth/me", { avatar_id: selected.id });
-      alert("✅ เปลี่ยนอวตาร์เรียบร้อย");
+      alert("เปลี่ยนอวตาร์เรียบร้อย");
       navigate("/profile");
     } catch (e) {
       console.error("บันทึกอวตาร์ไม่สำเร็จ:", e);
-      alert("❌ ไม่สามารถบันทึกอวตาร์ได้");
+      alert("ไม่สามารถบันทึกอวตาร์ได้");
     } finally {
       setSaving(false);
     }

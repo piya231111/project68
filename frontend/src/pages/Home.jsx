@@ -156,7 +156,7 @@ export default function Home() {
             </button>
 
             <button
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl"
+              className="w-full bg-[#00B8E6] hover:bg-[#009ecc] text-white font-semibold py-3 rounded-xl"
               onClick={() => {
                 setShowChatModal(false);
                 navigate("/chat/group");

@@ -47,8 +47,20 @@ export default function useChatMessages(friendId) {
 
         const handleReceive = (msg) => {
             if (String(msg.room_id) !== String(roomId)) return;
-            setMessages(prev => [...prev, msg]);
+
+            setMessages(prev => {
+                // ลบ temp message ของตัวเอง
+                const filtered = prev.filter(
+                    m => !(m.optimistic && String(m.sender_id) === String(msg.sender_id))
+                );
+
+                // กันซ้ำ
+                if (filtered.some(m => m.id === msg.id)) return filtered;
+
+                return [...filtered, msg];
+            });
         };
+
         socket.on("receive_message", handleReceive);
 
         const handleUpdate = (update) => {
@@ -77,15 +89,29 @@ export default function useChatMessages(friendId) {
     const sendTextMessage = (text) => {
         if (!text.trim() || !roomId || !roomReady) return;
 
-        socket.emit(
-            "send_message",
-            {
-                room_id: roomId,
-                sender_id: userId,
-                type: "text",
-                text,
-            }
-        );
+        const tempMessage = {
+            id: `temp-${Date.now()}`,   // id ชั่วคราว
+            room_id: roomId,
+            sender_id: userId,
+            text,
+            type: "text",
+            created_at: new Date().toISOString(),
+            sender_name: me.display_name,
+            avatar_id: me.avatar_id,
+            item_id: me.item_id,
+            optimistic: true,
+        };
+
+        // ✅ 1) แสดงข้อความทันที
+        setMessages(prev => [...prev, tempMessage]);
+
+        // ✅ 2) ส่งไป backend
+        socket.emit("send_message", {
+            room_id: roomId,
+            sender_id: userId,
+            type: "text",
+            text,
+        });
     };
 
     /* ============================================

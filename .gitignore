@@ -3,13 +3,12 @@ node_modules/
 dist/
 .env
 
-# Python / Django
+# Backend
 __pycache__/
 *.pyc
 .env
-.venv/
 
-# Upload / Media files (สำคัญมาก)
+# Upload / Media fileszza
 backend/uploads/
 *.mp4
 *.mov

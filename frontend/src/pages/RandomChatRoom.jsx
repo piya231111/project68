@@ -121,15 +121,7 @@ export default function RandomChatRoom() {
         };
 
         const onMessage = (msg) => {
-            const isMine = String(msg.sender) === String(me.id);
-
-            setMessages(prev => [
-                ...prev,
-                {
-                    ...msg,
-                    senderName: isMine ? me.display_name : (partner?.display_name || msg.senderName)
-                }
-            ]);
+            setMessages((prev) => [...prev, msg]);
         };
 
         const onEnd = () => {
@@ -364,7 +356,7 @@ export default function RandomChatRoom() {
                 <div className="flex items-center gap-3">
                     {partner && (
                         <button
-                            onClick={() => setShowDetail(true)}
+                            onClick={() => partner && setShowDetail(true)}
                             className="relative w-20 h-20 rounded-full overflow-hidden border bg-white flex-shrink-0 focus:outline-none"
                         >
                             {/* ITEM : ซ้อนหลัง */}
@@ -387,7 +379,7 @@ export default function RandomChatRoom() {
 
                     <div>
                         <p
-                            onClick={() => setShowDetail(true)}
+                            onClick={() => partner && setShowDetail(true)}
                             className="font-semibold text-gray-800">
                             {partner?.display_name || "กำลังจับคู่..."}
                         </p>
@@ -420,10 +412,6 @@ export default function RandomChatRoom() {
                         minute: "2-digit",
                     });
 
-                    const base = "max-w-[260px] px-4 py-2 rounded-2xl shadow text-sm";
-                    const myBubble = "bg-[#00B8E6] text-white rounded-br-none";
-                    const otherBubble = "bg-white text-gray-700 rounded-bl-none border";
-
                     return (
                         <div
                             key={i}
@@ -432,7 +420,7 @@ export default function RandomChatRoom() {
                             {/* ===== AVATAR ซ้าย (คู่สนทนา) ===== */}
                             {!isMine && partner && (
                                 <button
-                                    onClick={() => setShowDetail(true)}
+                                    onClick={() => partner && setShowDetail(true)}
                                     className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden border bg-white shadow focus:outline-none"
                                 >
 
@@ -456,9 +444,9 @@ export default function RandomChatRoom() {
                                 {!isMine && (
                                     <p
                                         className="text-[11px] text-blue-500 font-medium ml-1 mb-1 cursor-pointer hover:underline"
-                                        onClick={() => setShowDetail(true)}
+                                        onClick={() => partner && setShowDetail(true)}
                                     >
-                                        {partner.display_name}
+                                        {partner?.display_name || "กำลังเชื่อมต่อ..."}
                                     </p>
                                 )}
 

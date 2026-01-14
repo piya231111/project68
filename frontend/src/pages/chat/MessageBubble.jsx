@@ -8,7 +8,8 @@ export default function MessageBubble({ message }) {
   const me = JSON.parse(localStorage.getItem("user"));
   const userId = me?.id;
 
-  const isMine = String(message.sender_id) === String(userId);
+  const senderId = message.sender_id ?? message.sender;
+  const isMine = String(senderId) === String(userId);
 
   const [showDetail, setShowDetail] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -17,9 +18,8 @@ export default function MessageBubble({ message }) {
     if (isMine) return;
 
     try {
-      const userRes = await api.get(`/users/${message.sender_id}`);
-
-      const statusRes = await api.get(`/friends/${message.sender_id}/status`);
+      const userRes = await api.get(`/users/${senderId}`);
+      const statusRes = await api.get(`/friends/${senderId}/status`);
 
       setSelectedUser({
         ...userRes.data,
@@ -35,10 +35,13 @@ export default function MessageBubble({ message }) {
     }
   };
 
-  const time = new Date(message.created_at).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const timeValue = message.created_at || message.time;
+  const time = timeValue
+    ? new Date(timeValue).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    : "";
 
   const isMedia =
     message.type === "image" ||
@@ -51,30 +54,24 @@ export default function MessageBubble({ message }) {
         message.avatar_id
       ).padStart(2, "0")}.png`
       : isMine
-        ? `${BACKEND_URL}/uploads/avatars/avatar${String(me.avatar_id).padStart(
-          2,
-          "0"
-        )}.png`
+        ? `${BACKEND_URL}/uploads/avatars/avatar${String(me.avatar_id).padStart(2, "0")}.png`
         : "/default-avatar.png";
 
   const item =
     message.item_id
-      ? `${BACKEND_URL}/uploads/items/item${String(message.item_id).padStart(
-        2,
-        "0"
-      )}.png`
+      ? `${BACKEND_URL}/uploads/items/item${String(message.item_id).padStart(2, "0")}.png`
       : isMine
-        ? `${BACKEND_URL}/uploads/items/item${String(me.item_id).padStart(
-          2,
-          "0"
-        )}.png`
+        ? `${BACKEND_URL}/uploads/items/item${String(me.item_id).padStart(2, "0")}.png`
         : null;
 
-  const mediaUrl = message.file_url
-    ? message.file_url.startsWith("http")
-      ? message.file_url
-      : `${BACKEND_URL}${message.file_url}`
+  const mediaUrlRaw = message.file_url || message.fileUrl;
+
+  const mediaUrl = mediaUrlRaw
+    ? mediaUrlRaw.startsWith("http")
+      ? mediaUrlRaw
+      : `${BACKEND_URL}${mediaUrlRaw}`
     : null;
+
 
   return (
     <>
@@ -115,7 +112,9 @@ export default function MessageBubble({ message }) {
               className={`text-[11px] font-medium mb-1 cursor-pointer hover:underline ${isMine ? "text-gray-500" : "text-blue-500"
                 }`}
             >
-              {message.sender_name}
+              {isMine
+                ? "คุณ"
+                : message.sender_name || message.senderName || "ไม่ทราบชื่อ"}
             </p>
 
             {isMedia && mediaUrl && (

@@ -165,11 +165,9 @@ export async function searchFriends(req, res) {
     if (mode === "manual" && category) {
       const cats = Array.isArray(category) ? category : [category];
 
-      query += ` AND p.interests && ARRAY[${cats
-        .map(() => `$${i++}`)
-        .join(", ")}]`;
-
-      cats.forEach((c) => params.push(c));
+      query += ` AND p.interests @> $${i}::text[]`;
+      params.push(cats);
+      i++;
     }
 
     query += ` ORDER BY u.display_name ASC LIMIT 50`;
@@ -615,15 +613,15 @@ export async function getFriendStatus(req, res) {
     // 6) ส่ง response ให้ frontend ครบทั้งหมด
     // ================================
     res.json({
-      is_online,            
-      isFriend,          
-      isIncomingRequest,   
-      isSentRequest,      
-      is_favorite,          
+      is_online,
+      isFriend,
+      isIncomingRequest,
+      isSentRequest,
+      is_favorite,
 
       // เพิ่มเพื่อรองรับ RandomChatRoom + FriendDetail
-      status,              
-      isOnline: is_online,  
+      status,
+      isOnline: is_online,
       isFavorite: is_favorite,
     });
 

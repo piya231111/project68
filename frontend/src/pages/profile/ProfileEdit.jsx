@@ -103,10 +103,10 @@ export default function ProfileEdit() {
         country,
         interests: selectedCategories,
       });
-      alert("✅ บันทึกข้อมูลสำเร็จ");
+      alert("บันทึกข้อมูลสำเร็จ");
       navigate("/profile");
     } catch (err) {
-      alert("❌ เกิดข้อผิดพลาดในการบันทึก");
+      alert("เกิดข้อผิดพลาดในการบันทึก");
     } finally {
       setSaving(false);
     }
@@ -140,20 +140,24 @@ export default function ProfileEdit() {
           )}
         </div>
 
-        <div className="flex gap-5 mt-4">
+        <div className="flex gap-6 mt-6">
+          {/* เปลี่ยนอวตาร์ */}
           <Link
             to="/profile/avatar"
-            className="text-sm text-[#00B8E6] hover:underline flex items-center gap-1"
+            className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-[#a5e8f7] bg-white text-[#00B8E6] font-medium shadow-sm hover:bg-[#E9FBFF] hover:shadow-md transition"
           >
-            เปลี่ยนอวตาร์
+            <span>เปลี่ยนอวตาร์</span>
           </Link>
+
+          {/* เปลี่ยนไอเทม */}
           <Link
             to="/profile/item"
-            className="text-sm text-[#FF4D94] hover:underline flex items-center gap-1"
+            className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-[#a5e8f7] bg-white text-[#00B8E6] font-medium shadow-sm hover:bg-[#E9FBFF] hover:shadow-md transition"
           >
-            เปลี่ยนไอเทม
+            <span>เปลี่ยนไอเทม</span>
           </Link>
         </div>
+
       </div>
 
       {/* ฝั่งขวา: ฟอร์ม */}
@@ -229,11 +233,10 @@ export default function ProfileEdit() {
             <button
               onClick={save}
               disabled={saving}
-              className={`px-8 py-3 rounded-lg text-white font-semibold ${
-                saving
+              className={`px-8 py-3 rounded-lg text-white font-semibold ${saving
                   ? "bg-[#00B8E6]/60 cursor-not-allowed"
                   : "bg-[#00B8E6] hover:bg-[#009ecc]"
-              }`}
+                }`}
             >
               {saving ? "กำลังบันทึก..." : "บันทึก"}
             </button>
@@ -254,11 +257,10 @@ export default function ProfileEdit() {
                 <button
                   key={cat}
                   onClick={() => toggleCategory(cat)}
-                  className={`py-3 px-4 rounded-xl text-lg font-semibold border transition-all ${
-                    selectedCategories.includes(cat)
+                  className={`py-3 px-4 rounded-xl text-lg font-semibold border transition-all ${selectedCategories.includes(cat)
                       ? "bg-[#00B8E6] text-white shadow-md scale-105"
                       : "bg-white text-[#00B8E6] border-[#a5e8f7] hover:bg-[#E9FBFF] hover:shadow-md"
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>

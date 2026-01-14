@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import CountrySelect from "../../components/CountrySelect";
 
 export default function SearchSection({
@@ -10,6 +10,27 @@ export default function SearchSection({
   const [name, setName] = React.useState("");
   const [country, setCountry] = React.useState("");
   const [mode, setMode] = React.useState("all"); // แนะนำให้เริ่ม all
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+
+      if (name.trim()) params.append("q", name.trim());
+      if (country) params.append("country", country);
+      if (mode) params.append("mode", mode);
+
+      if (mode === "manual" && selectedCategories?.length > 0) {
+        selectedCategories.forEach((cat) =>
+          params.append("category", cat)
+        );
+      }
+
+      doSearch(params.toString());
+    }, 300); // debounce 300ms
+
+    return () => clearTimeout(timer);
+  }, [name, country, mode, selectedCategories]);
+
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -54,7 +75,7 @@ export default function SearchSection({
         <div className="flex flex-col lg:flex-row items-start justify-between gap-5 overflow-visible">
           <input
             type="text"
-            placeholder="ค้นหาชื่อเพื่อน..."
+            placeholder="ค้นหาด้วยชื่อ..."
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="
