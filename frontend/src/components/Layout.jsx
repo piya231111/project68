@@ -165,16 +165,6 @@ export default function Layout() {
                             <button
                                 onClick={() => {
                                     setMenuOpen(false);
-                                    navigate("/profile");
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-[#E9FBFF]"
-                            >
-                                โปรไฟล์
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    setMenuOpen(false);
                                     setSettingsOpen(true);
                                 }}
                                 className="w-full text-left px-4 py-2 hover:bg-[#E9FBFF]"

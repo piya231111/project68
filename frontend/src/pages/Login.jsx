@@ -16,7 +16,7 @@ async function loadUserRelations(me) {
       headers: { Authorization: `Bearer ${token}` }
     }).then(r => r.json());
 
-    // ⭐ ลบข้อมูลซ้ำด้วย Set()
+    // ลบข้อมูลซ้ำด้วย Set()
     me.friends = [...new Set(fr.friends.map(f => f.id))];
     me.blocked = [...new Set(bl.blocked.map(b => b.id))];
 

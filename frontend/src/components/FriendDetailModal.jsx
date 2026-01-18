@@ -247,7 +247,7 @@ export default function FriendDetailModal({
                       }}
                       className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold"
                     >
-                      บล็อคผู้ใช้
+                      บล็อกผู้ใช้
                     </button>
                   </>
                 )}

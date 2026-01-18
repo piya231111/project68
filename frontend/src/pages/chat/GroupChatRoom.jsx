@@ -424,7 +424,7 @@ export default function GroupChatRoom() {
           onClick={() => setShowInviteModal(true)}
           className="ml-auto text-[#00B8E6] font-semibold whitespace-nowrap"
         >
-          ชวนเพื่อน
+          เชิญเพื่อน
         </button>
       </div>
 

@@ -10,7 +10,7 @@ export default function Home() {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ⭐ ประกาศ state modal
+  //ประกาศ state modal
   const [showChatModal, setShowChatModal] = useState(false);
 
   const navigate = useNavigate();
