@@ -631,7 +631,7 @@ export async function getFriendStatus(req, res) {
   }
 }
 
-// ✔ ดึงข้อมูลเพื่อนรายคนแบบเต็ม ใช้ในหน้าแชท
+//ดึงข้อมูลเพื่อนรายคนแบบเต็ม ใช้ในหน้าแชท
 export async function getFriendDetail(req, res) {
   try {
     const friendId = req.params.id;
