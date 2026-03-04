@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { api, setToken } from "../api";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
+import { connectAsUser } from "../socket";
 
 async function loadUserRelations(me) {
   try {
@@ -39,7 +40,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // 🔹 Login
+      // Login
       const r = await api.post("/auth/login", {
         identifier: form.email.trim(),
         password: form.password,
@@ -48,7 +49,7 @@ export default function Login() {
       const token = r.data?.token;
       if (!token) throw new Error("No token returned");
 
-      // 🔹 เก็บ token
+      //เก็บ token
       setToken(token);
 
       // รอ backend อัปเดตสถานะ online
@@ -57,13 +58,16 @@ export default function Login() {
       const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
 
+      const ok = await connectAsUser(me.id);
+      console.log("connectAsUser ok?", ok);
+
       // โหลดเพื่อน + บล็อค
       await loadUserRelations(me);
 
       localStorage.setItem("userId", me.id);
       localStorage.setItem("user", JSON.stringify(me));
 
-      // 🔹 เช็คว่า setup ครบไหม
+      // เช็คว่า setup ครบไหม
       if (me?.country && me?.avatar_id && me?.item_id && me?.interests?.length > 0) {
         navigate("/home", { replace: true });
       } else {
@@ -99,6 +103,7 @@ export default function Login() {
 
       const meRes = await api.get("/auth/me");
       const me = meRes.data?.me;
+      connectAsUser(me.id);
 
       // โหลดเพื่อน + บล็อค
       await loadUserRelations(me);

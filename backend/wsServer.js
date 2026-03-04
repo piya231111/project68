@@ -37,13 +37,40 @@ function getSimilarity(a1, a2) {
 }
 
 function removeFromRandomQueue(userId) {
-  randomWaiting = randomWaiting.filter(u => u.userId !== userId);
+  const uid = String(userId);
+  randomWaiting = randomWaiting.filter(u => String(u.userId) !== uid);
+}
+
+function cleanupUserSocket(socket) {
+  const userId = socketToUser.get(socket.id);
+  socketToUser.delete(socket.id);
+
+  if (userId) {
+    // ลบ online mapping ที่ชี้มาที่ socket นี้
+    const currentSid = onlineUsers.get(String(userId));
+    if (currentSid === socket.id) {
+      onlineUsers.delete(String(userId));
+    }
+
+    // ลบออกจากคิวสุ่ม
+    randomWaiting = randomWaiting.filter(u => String(u.userId) !== String(userId));
+  }
+
+  // ปิดห้องสุ่มที่เกี่ยวข้องกับ socket นี้
+  for (const roomId in randomRooms) {
+    if (randomRooms[roomId].sockets.includes(socket.id)) {
+      ioInstance?.to(roomId).emit("randomChat:end");
+      socket.leave(roomId);
+      delete randomRooms[roomId];
+    }
+  }
 }
 
 export function setupWebSocket(server) {
   const io = new Server(server, {
     cors: { origin: "http://localhost:5173", credentials: true },
   });
+
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id);
@@ -53,32 +80,43 @@ export function setupWebSocket(server) {
     /* =============================
          ONLINE
     ============================== */
-    socket.on("online", (userId) => {
-      if (userId) {
+    socket.on("online", (userId, cb) => {
+      if (!userId) return cb?.({ ok: false });
 
-        socketToUser.set(socket.id, String(userId));
-        onlineUsers.set(String(userId), socket.id);
-        console.log(`User ${userId} online via socket ${socket.id}`);
+      const uid = String(userId);
+
+      const oldSid = onlineUsers.get(uid);
+      if (oldSid && oldSid !== socket.id) {
+        socketToUser.delete(oldSid);
+        io.sockets.sockets.get(oldSid)?.disconnect(true);
       }
+
+      socketToUser.set(socket.id, uid);
+      onlineUsers.set(uid, socket.id);
+
+      console.log(`User ${uid} online via socket ${socket.id}`);
+
+      cb?.({ ok: true, socketId: socket.id }); // สำคัญ
+    });
+
+    socket.on("offline", () => {
+      cleanupUserSocket(socket);
     });
 
     /* =============================
         NORMAL CHAT: JOIN ROOM
     ============================== */
-    socket.on("join_room", ({ roomId, userId }) => {
-      if (!roomId || !userId) return;
+    socket.on("join_room", ({ roomId }) => {
+      const uid = socketToUser.get(socket.id);
+      if (!roomId || !uid) return;
 
       socket.join(roomId);
 
-      if (!roomMembers.has(roomId)) {
-        roomMembers.set(roomId, new Set());
-      }
-
-      roomMembers.get(roomId).add(String(userId));
+      if (!roomMembers.has(roomId)) roomMembers.set(roomId, new Set());
+      roomMembers.get(roomId).add(String(uid));
 
       io.to(socket.id).emit("room_joined", roomId);
     });
-
     socket.on("randomChat:getRoomInfo", ({ roomId }) => {
       if (!randomRooms[roomId]) return;
       io.to(socket.id).emit("randomChat:roomInfo", {
@@ -96,11 +134,34 @@ export function setupWebSocket(server) {
         const safeCallback = (res) =>
           typeof callback === "function" && callback(res);
 
-        if (!room_id || !sender_id)
-          return safeCallback({ ok: false, error: "missing data" });
+        //1) เอา sender_id จริงจาก socket (กันค้าง/กันปลอม)
+        const realSenderId = socketToUser.get(socket.id);
+        if (!realSenderId) {
+          return safeCallback({ ok: false, error: "unauthorized (no socket user)" });
+        }
+        sender_id = String(realSenderId);
+
+        if (!room_id) {
+          return safeCallback({ ok: false, error: "missing room_id" });
+        }
 
         if (type === "text") {
           text = censorText(text);
+        }
+
+        //(แนะนำเพิ่ม) ตรวจว่า sender เป็นสมาชิกห้องนี้จริง กันยิงห้องคนอื่น
+        const roomDataCheck = await pool.query(
+          `SELECT user1_id, user2_id FROM chat_rooms WHERE id = $1`,
+          [room_id]
+        );
+        if (!roomDataCheck.rows[0]) {
+          return safeCallback({ ok: false, error: "room not found" });
+        }
+        const { user1_id, user2_id } = roomDataCheck.rows[0];
+        const isMember =
+          String(sender_id) === String(user1_id) || String(sender_id) === String(user2_id);
+        if (!isMember) {
+          return safeCallback({ ok: false, error: "forbidden (not room member)" });
         }
 
         // 1) INSERT message
@@ -136,13 +197,7 @@ export function setupWebSocket(server) {
 
         const socketMsg = fullResult.rows[0];
 
-        // 3) หา receiverId ก่อน
-        const roomData = await pool.query(
-          `SELECT user1_id, user2_id FROM chat_rooms WHERE id = $1`,
-          [room_id]
-        );
-
-        const { user1_id, user2_id } = roomData.rows[0];
+        // 3) หา receiverId (ใช้ sender_id ที่ override แล้ว)
         const receiverId =
           String(sender_id) === String(user1_id) ? user2_id : user1_id;
 
@@ -151,8 +206,7 @@ export function setupWebSocket(server) {
 
         // 5) ถ้า receiver ยังไม่อยู่ใน room → ส่งตรง socket
         const members = roomMembers.get(room_id);
-        const isReceiverInRoom =
-          members && members.has(String(receiverId));
+        const isReceiverInRoom = members && members.has(String(receiverId));
 
         if (!isReceiverInRoom) {
           let receiverSocketId = null;
@@ -171,7 +225,7 @@ export function setupWebSocket(server) {
 
         safeCallback({ ok: true, msg: socketMsg });
 
-        // 6) notification (ของเดิม)
+        // 6) notification
         if (!isReceiverInRoom) {
           await pool.query(
             `
@@ -186,7 +240,6 @@ export function setupWebSocket(server) {
             ]
           );
         }
-
       } catch (err) {
         console.error("send_message ERR:", err);
         callback?.({ ok: false, error: err.message });
@@ -207,14 +260,16 @@ export function setupWebSocket(server) {
         RANDOM CHAT: JOIN QUEUE
     ============================== */
     socket.on("randomChat:joinQueue", (user) => {
+      const uid = String(user.userId ?? user.id);   // รองรับทั้ง userId / id
       const userData = {
         ...user,
+        userId: uid,
         socketId: socket.id,
+        isOnline: true,
       };
 
-      // ป้องกันซ้ำ
       const exists = randomWaiting.find(
-        (u) => u.userId === userData.userId || u.socketId === socket.id
+        (u) => String(u.userId) === uid || u.socketId === socket.id
       );
       if (exists) return;
 
@@ -240,7 +295,7 @@ export function setupWebSocket(server) {
           );
 
           if (a.country !== b.country) continue;
-          if (!a.isOnline || !b.isOnline) continue;
+          if (!onlineUsers.has(String(a.userId)) || !onlineUsers.has(String(b.userId))) continue;
 
           //ห้ามสุ่มเจอคนที่บล็อคเรา หรือเราบล็อคเขา
           if ((a.blocked || []).includes(b.userId)) continue;
@@ -303,6 +358,7 @@ export function setupWebSocket(server) {
       for (const roomId in randomRooms) {
         if (randomRooms[roomId].sockets.includes(socket.id)) {
           io.to(roomId).emit("randomChat:end");
+          socket.leave(roomId);
           delete randomRooms[roomId];
         }
       }
@@ -547,7 +603,8 @@ export function setupWebSocket(server) {
       console.log("Socket disconnected:", socket.id);
 
       const userId = socketToUser.get(socket.id);
-      socketToUser.delete(socket.id);
+
+      cleanupUserSocket(socket);
 
       if (!userId) return;
 

@@ -4,28 +4,41 @@ import { useNavigate } from "react-router-dom";
 
 async function loadUserRelationsFresh() {
   const token = localStorage.getItem("token");
-  const me = JSON.parse(localStorage.getItem("user"));
 
   try {
+    // 1) ดึง me ล่าสุดจาก backend (สำคัญที่สุด)
+    const meRes = await fetch("http://localhost:7000/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json());
+
+    const fresh = meRes?.me;
+    if (!fresh?.id) return null;
+
+    // 2) ดึง friends/blocked ล่าสุด
     const fr = await fetch("http://localhost:7000/api/friends", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json());
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json());
 
     const bl = await fetch("http://localhost:7000/api/friends/blocked", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json());
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((r) => r.json());
 
-    me.friends = [...new Set(fr.friends.map(f => f.id))];
-    me.blocked = [...new Set(bl.blocked.map(b => b.id))];
+    const merged = {
+      ...fresh,
+      friends: [...new Set((fr.friends || []).map((f) => f.id))],
+      blocked: [...new Set((bl.blocked || []).map((b) => b.id))],
+    };
 
-    localStorage.setItem("user", JSON.stringify(me));
-    return me;
+    // sync localStorage ให้ครบทุก field
+    localStorage.setItem("user", JSON.stringify(merged));
+    localStorage.setItem("userId", merged.id);
+
+    return merged;
   } catch (err) {
-    console.error("โหลด friends/blocked ไม่สำเร็จ:", err);
-    return me;
+    console.error("โหลด me/friends/blocked ไม่สำเร็จ:", err);
+    return null;
   }
 }
-
 export default function RandomChatWaiting() {
   const navigate = useNavigate();
 
@@ -44,19 +57,26 @@ export default function RandomChatWaiting() {
       if (joinedRef.current) return;
       joinedRef.current = true;
 
-      socket.emit("randomChat:joinQueue", {
+      const payload = {
         userId: me.id,
         country: me.country,
         interests: me.interests || [],
         friends: me.friends || [],
         blocked: me.blocked || [],
         isOnline: true,
-      });
+      };
 
-      socket.on("randomChat:waiting", () => {
-        if (isMounted) {
-          setStatus("กำลังหาเพื่อนคุยที่เข้ากันได้...");
-        }
+      console.log("JOINQUEUE payload =", payload);
+
+      socket.off("randomChat:waiting");
+      socket.off("randomChat:matched");
+
+      socket.emit("randomChat:joinQueue", payload);
+
+      socket.on("randomChat:waiting", (p) => {
+        if (!isMounted) return;
+        if (p?.error) setStatus(p.error);
+        else setStatus("กำลังหาเพื่อนคุยที่เข้ากันได้...");
       });
 
       socket.on("randomChat:matched", ({ roomId }) => {
@@ -116,7 +136,7 @@ export default function RandomChatWaiting() {
               <button
                 onClick={() => {
                   setShowLeaveConfirm(false);
-                  cancelRandomChat();  
+                  cancelRandomChat();
                 }}
                 className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
               >

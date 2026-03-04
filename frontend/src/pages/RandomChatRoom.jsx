@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { socket } from "../socket";
+import { api } from "../api";
 
 import GifModal from "./chat/GifModal";
 import useGifSearch from "./chat/hooks/useGifSearchRandom";
@@ -22,14 +23,13 @@ const itemSrc = (id) => {
 export default function RandomChatRoom() {
     const { roomId } = useParams();
     const navigate = useNavigate();
+    const [me, setMe] = useState(null);
 
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [partner, setPartner] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-
-    const me = JSON.parse(localStorage.getItem("user"));
     const bottomRef = useRef(null);
 
     /** GIF system */
@@ -43,6 +43,22 @@ export default function RandomChatRoom() {
         sendGif,
     } = useGifSearch(roomId);
 
+    //  โหลด me สดจาก backend
+    useEffect(() => {
+        const loadMe = async () => {
+            try {
+                const meRes = await api.get("/auth/me");
+                const fresh = meRes.data?.me;
+                setMe(fresh);
+                localStorage.setItem("user", JSON.stringify(fresh));
+                localStorage.setItem("userId", fresh.id);
+            } catch (e) {
+                console.error("load me failed", e);
+            }
+        };
+        loadMe();
+    }, []);
+
     // ===============================
     // โหลดข้อความเก่า (cache)
     // ===============================
@@ -55,52 +71,35 @@ export default function RandomChatRoom() {
     // JOIN ROOM + LISTEN
     // ===============================
     useEffect(() => {
-        if (!roomId) return;
+        if (!roomId || !me?.id) return;
 
-        socket.emit("join_room", { roomId, userId: me.id });
+        socket.emit("join_room", { roomId });
         socket.emit("randomChat:rejoin", { roomId, userId: me.id });
-
-        // ขอข้อมูล room ทันที
         socket.emit("randomChat:getRoomInfo", { roomId });
 
         const loadPartner = async ({ users }) => {
-            console.log(">>> ROOM INFO USERS =", users);
-            console.log(">>> CURRENT USER =", me.id);
-
-            const partnerId = users.find((id) => id !== me.id);
-            console.log(">>> PARTNER ID =", partnerId);
-
+            const partnerId = users.find((id) => String(id) !== String(me.id));
             if (!partnerId) return;
 
             const token = localStorage.getItem("token");
 
-            // ดึง user data
             const res = await fetch(`http://localhost:7000/api/users/${partnerId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const data = await res.json();
-            console.log(">>> PARTNER DATA =", data);
 
-            // ดึง friend status
             const statusRes = await fetch(
                 `http://localhost:7000/api/friends/${partnerId}/status`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const status = await statusRes.json();
-            console.log(">>> PARTNER STATUS =", status);
 
             const relation = {
-                isFriend: false,
-                isIncomingRequest: false,
-                isSentRequest: false,
-                isFavorite: false,
+                isFriend: status.status === "friend",
+                isIncomingRequest: status.status === "incoming",
+                isSentRequest: status.status === "sent",
+                isFavorite: Boolean(status.isFavorite),
             };
-
-            if (status.status === "friend") relation.isFriend = true;
-            if (status.status === "incoming") relation.isIncomingRequest = true;
-            if (status.status === "sent") relation.isSentRequest = true;
-
-            relation.isFavorite = Boolean(status.isFavorite);
 
             setPartner({
                 id: data.id,
@@ -112,17 +111,9 @@ export default function RandomChatRoom() {
                 is_online: data.is_online,
                 ...relation,
             });
-
-            console.log(">>> FINAL PARTNER =", {
-                id: data.id,
-                display_name: data.display_name,
-                ...relation
-            });
         };
 
-        const onMessage = (msg) => {
-            setMessages((prev) => [...prev, msg]);
-        };
+        const onMessage = (msg) => setMessages((prev) => [...prev, msg]);
 
         const onEnd = () => {
             alert("คู่สนทนาออกจากห้องแล้ว");
@@ -139,7 +130,7 @@ export default function RandomChatRoom() {
             socket.off("randomChat:message", onMessage);
             socket.off("randomChat:end", onEnd);
         };
-    }, [roomId, me.id]);
+    }, [roomId, me?.id, navigate]);
 
     // ===============================
     // Auto-save
@@ -152,6 +143,7 @@ export default function RandomChatRoom() {
     // ส่งข้อความ
     // ===============================
     const sendMessage = () => {
+        if (!me?.id) return;
         if (!input.trim()) return;
 
         socket.emit("randomChat:message", {
@@ -203,6 +195,7 @@ export default function RandomChatRoom() {
     // ===============================
     const leaveRoom = () => {
         socket.emit("randomChat:leave", roomId);
+        socket.emit("randomChat:leaveQueue"); 
         localStorage.removeItem(`random_chat_${roomId}`);
         navigate("/home");
     };
@@ -348,6 +341,13 @@ export default function RandomChatRoom() {
         navigate(`/chat/room/${data.roomId}`);
     };
 
+    if (!me) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#E9FBFF]">
+                กำลังโหลด...
+            </div>
+        );
+    }
     return (
         <div className="flex flex-col h-screen bg-[#E9FBFF]">
 
